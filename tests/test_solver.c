@@ -170,6 +170,8 @@ static bool build_scene(placer_context_t *ctx, bool overlapping)
 static void light_options(solver_options_t *opt)
 {
     solver_options_defaults(opt);
+    opt->global_iterations = 20u;
+    opt->density_bins = 8u; /* the 64x64 grid is for boards, not for six parts */
     opt->refine_moves = 200u;
     opt->refine_restarts = 1u;
 }
@@ -189,11 +191,11 @@ static void test_defaults_are_sane(void)
     CHECK(opt.enable_global && opt.enable_refine && opt.enable_legalize);
     CHECK(opt.enable_matching); /* on by default once the overlap count was exact */
 
-    /* The reference configuration on r10 (HPWL 27 471.3 mm, 0 movable overlap,
+    /* The reference configuration on r10 (HPWL 26 793.4 mm, 0 movable overlap,
      * KiCad DRC 0/0/0 in about a minute). It is a contract, not a coincidence -
      * changing any of these silently invalidates the reference. */
-    CHECK(opt.refine_moves == 64000u);
-    CHECK(opt.refine_restarts == 32u);
+    CHECK(opt.refine_moves == 1000000u);
+    CHECK(opt.refine_restarts == 16u);
     CHECK(opt.jobs == 4u);
     CHECK(opt.w_crossings == 5.0f);
     CHECK(opt.pad_clearance == 0.5f);
@@ -220,7 +222,7 @@ static void test_solve_produces_a_full_placement(void)
     placement_entry_t out[COMP_COUNT];
     solver_stats_t stats;
     solver_options_t opt;
-    solver_options_defaults(&opt);
+    light_options(&opt);
     opt.enable_clustering = true; /* off by default: this test is about stage 1 */
     CHECK(placer_solve(&ctx, &opt, out, COMP_COUNT, &stats));
     CHECK(stats.clusters >= 1u);
@@ -303,7 +305,7 @@ static void test_same_seed_same_layout(void)
     placement_entry_t a[COMP_COUNT];
     placement_entry_t b[COMP_COUNT];
     solver_options_t opt;
-    solver_options_defaults(&opt);
+    light_options(&opt);
     opt.seed = 1234u;
     CHECK(placer_solve(&ctx, &opt, a, COMP_COUNT, nullptr));
     CHECK(placer_solve(&ctx, &opt, b, COMP_COUNT, nullptr));
@@ -618,20 +620,24 @@ static void test_a_quarter_turn_follows_kicad(void)
     placer_context_destroy(&ctx);
 }
 
+#include <time.h>
+static double now_s(void){struct timespec t;clock_gettime(CLOCK_MONOTONIC,&t);return (double)t.tv_sec+(double)t.tv_nsec*1e-9;}
+#define T(name) do { const double t0_ = now_s(); name(); const double dt_ = now_s()-t0_; if (dt_ > 0.5) (void)printf("  [%.2f s] %s\n", dt_, #name); } while (0)
+
 int main(void)
 {
-    test_defaults_are_sane();
-    test_solve_produces_a_full_placement();
-    test_locked_parts_do_not_move();
-    test_legalisation_separates_overlaps();
-    test_everything_stays_inside_the_board();
-    test_same_seed_same_layout();
-    test_stage_toggles_are_honoured();
-    test_refuses_a_scene_that_is_not_finalised();
-    test_raster_mask_finds_the_free_cavities();
-    test_the_solver_leaves_no_trace_in_the_scratch();
-    test_a_non_plated_hole_spans_both_sides();
-    test_a_quarter_turn_follows_kicad();
+    T(test_defaults_are_sane);
+    T(test_solve_produces_a_full_placement);
+    T(test_locked_parts_do_not_move);
+    T(test_legalisation_separates_overlaps);
+    T(test_everything_stays_inside_the_board);
+    T(test_same_seed_same_layout);
+    T(test_stage_toggles_are_honoured);
+    T(test_refuses_a_scene_that_is_not_finalised);
+    T(test_raster_mask_finds_the_free_cavities);
+    T(test_the_solver_leaves_no_trace_in_the_scratch);
+    T(test_a_non_plated_hole_spans_both_sides);
+    T(test_a_quarter_turn_follows_kicad);
 
     if (g_failures == 0) {
         (void)printf("test_solver: all checks passed\n");

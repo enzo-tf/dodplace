@@ -126,6 +126,9 @@ typedef struct {
     uint32_t moves_tried;
     uint32_t moves_accepted;
     uint32_t moves_walled;        /* refused: outside the part's anchor box */
+    /* Metropolis acceptances per quarter of the walk, for the walk that ran
+     * last: a budget spent without exploring shows up here first. */
+    uint32_t accept_q[4];
     uint32_t legalize_pushes;
     uint32_t unplaced_before;     /* true overlaps the solver had to fix, in the input */
     uint32_t unplaced;            /* courtyards still truly overlapping */

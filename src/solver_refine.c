@@ -75,6 +75,9 @@ void solver_refine(solver_t *s)
         }
     }
     s->stats.movable = s->nmovable;
+    for (uint32_t q = 0u; q < 4u; ++q) {
+        s->stats.accept_q[q] = 0u;
+    }
     if (s->nmovable == 0u) {
         return;
     }
@@ -88,11 +91,22 @@ void solver_refine(solver_t *s)
                                 ? current.score * s->opt->anneal_t_start_ratio
                                 : 1.0f;
     const coord_t t_end = t_start * s->opt->anneal_t_end_ratio;
-    const coord_t cooling =
-        powf(t_end / t_start, 1.0f / (coord_t)s->opt->refine_moves);
-    coord_t temperature = t_start;
+    /*
+     * The temperature is the geometric law itself, evaluated from the step
+     * index rather than accumulated:
+     *
+     *     T(k) = T_start * (T_end / T_start)^(k / N)
+     *
+     * Multiplying a float by a factor 0.9999931 a million times drifts, and a
+     * walk whose temperature collapses early stops exploring while the budget
+     * says otherwise. One powf per move costs microseconds against a walk that
+     * runs for minutes.
+     */
+    const coord_t ratio = t_end / t_start;
+    const coord_t inv_moves = 1.0f / (coord_t)s->opt->refine_moves;
 
     for (uint32_t move = 0u; move < s->opt->refine_moves; ++move) {
+        const coord_t temperature = t_start * powf(ratio, (coord_t)move * inv_moves);
         const uint32_t comp = s->movable[solver_rand_below(s, s->nmovable)];
         /* The swap draw is short-circuited when the probability is zero, so a
          * run at --swap-prob 0 consumes the generator exactly as before and
@@ -169,6 +183,7 @@ void solver_refine(solver_t *s)
         if (accept) {
             current = candidate;
             s->stats.moves_accepted += 1u;
+            s->stats.accept_q[(move * 4u) / s->opt->refine_moves] += 1u;
             if (candidate.score < s->best_score) {
                 snapshot(s, candidate.score);
             }
@@ -197,7 +212,6 @@ void solver_refine(solver_t *s)
                 s->y[comp] = saved_y;
             }
         }
-        temperature *= cooling;
     }
 
     if (s->have_best) {

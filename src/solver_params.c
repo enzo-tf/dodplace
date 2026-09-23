@@ -29,8 +29,8 @@ void solver_options_defaults(solver_options_t *opt)
      * single walk of four thousand by 1 700 mm, and the wall clock is not a
      * contract any more. `--moves` and `--restarts` dial it back for a
      * developer loop or a plugin run. */
-    opt->refine_moves = 64000u;
-    opt->refine_restarts = 32u;
+    opt->refine_moves = 1000000u;
+    opt->refine_restarts = 16u;
     /* Four walks at once is safe on any laptop; the calibration machine runs
      * eight and finishes the whole search in forty-five seconds. */
     opt->jobs = 4u;

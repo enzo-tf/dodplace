@@ -60,7 +60,7 @@ static void print_usage(FILE *out, const char *argv0)
                   "      --momentum F       Nesterov look-ahead for the analytic model (0.9)\n"
                   "      --density-bins N   bins per axis of the density grid (64)\n"
                   "      --iterations N     force-directed steps, default 400\n"
-                  "      --moves N          annealing moves per walk, default 64000\n"
+                  "      --moves N          annealing moves per walk, default 1000000\n"
                   "      --no-cluster       skip semantic clustering\n"
                   "      --no-matching      skip the discrete decoupling assignment\n"
                   "      --swap-prob F      share of moves that exchange identical parts (0.15)\n"
@@ -191,6 +191,9 @@ static void print_bench(const placer_context_t *ctx, const solver_stats_t *st,
     (void)printf("  legalize    %7.3f\n", (double)st->seconds_legalize);
     (void)printf("  write       %7.3f\n", seconds_write);
     (void)printf("  total       %7.3f\n", (double)st->seconds);
+    (void)printf("  accept/q    %u %u %u %u of %u moves\n", (unsigned)st->accept_q[0],
+                 (unsigned)st->accept_q[1], (unsigned)st->accept_q[2],
+                 (unsigned)st->accept_q[3], (unsigned)(st->moves_tried));
     (void)printf("  (cost calls %7.3f, %u evaluations)\n", (double)st->seconds_evaluate,
                  (unsigned)st->moves_tried);
     (void)printf("BENCH hpwl=%.1f hpwl_in=%.1f crossings=%u crossings_in=%u "

@@ -249,11 +249,42 @@ which the engine is not allowed to undo.
 | | |
 |---|---|
 | Configuration | the defaults: `--pad-clearance 0.50`, `--w-crossings 5.0`, `--polish-reach 0.20`, `--moves 32000`, `--restarts 16` |
-| HPWL | **27 471.3 mm** (input 31 699.6) — 4 228 mm better than the input and 9 341 mm better than the certified 36 812.2 mm baseline |
+| HPWL | **26 793.4 mm** (input 31 699.6) — 4 906 mm better than the input and 10 019 mm better than the certified 36 812.2 mm baseline |
 | Movable overlaps | **0** |
 | KiCad DRC | **0 courtyards_overlap · 0 shorting_items · 0 solder_mask_bridge**, and 0 clearance, 0 hole_clearance, 0 copper_edge_clearance |
 | Moves applied to the board | 208 of 707 footprints |
-| Time | 63 s (release, four walks at a time), 45 s with eight |
+| Time | 5 min 33 s (release, sixteen walks of a million moves, eight at a time) |
+
+### A million moves a walk: the floor is 26 793 mm
+
+The temperature is the geometric law itself, evaluated from the step index
+rather than accumulated:
+
+    T(k) = T_start * (T_end / T_start)^(k / N)
+
+Multiplying a float by 0.9999931 a million times drifts, and a walk whose
+temperature collapses early stops exploring while the budget still says it has
+moves to spend. One `powf` per move costs microseconds against a walk that runs
+for minutes. The Metropolis acceptance profile says the budget is being used:
+
+| quarter of the walk | 1st | 2nd | 3rd | 4th |
+|---|---|---|---|---|
+| accepted | 26 091 | 15 379 | 9 299 | 6 384 |
+| rate | 65.7 % | 38.7 % | 23.4 % | 16.1 % |
+
+Still one acceptance in six at the end: the walk is exploring when the budget
+runs out, which is the point of spending it.
+
+| moves per walk | walks | HPWL | wall clock |
+|---|---|---|---|
+| 200 000 | 1 | 27 545.1 mm | 21 s |
+| 64 000 | 32 | 27 471.3 mm | 63 s |
+| **1 000 000** | **16** | **26 793.4 mm** | 5 min 33 s (`--jobs 8`) |
+| certified baseline | | 36 812.2 mm | |
+
+One walk of two hundred thousand moves beats thirty-two walks of sixty-four
+thousand - depth is worth more than breadth on this board - and the trend
+between 64 000 and 1 000 000 says the plateau is still further down.
 
 ### The walks run in parallel, and the curve has not flattened
 
