@@ -189,11 +189,12 @@ static void test_defaults_are_sane(void)
     CHECK(opt.enable_global && opt.enable_refine && opt.enable_legalize);
     CHECK(opt.enable_matching); /* on by default once the overlap count was exact */
 
-    /* The reference configuration on r10 (HPWL 28 153.6 mm, 0 movable overlap,
+    /* The reference configuration on r10 (HPWL 27 471.3 mm, 0 movable overlap,
      * KiCad DRC 0/0/0 in about a minute). It is a contract, not a coincidence -
      * changing any of these silently invalidates the reference. */
-    CHECK(opt.refine_moves == 32000u);
-    CHECK(opt.refine_restarts == 16u);
+    CHECK(opt.refine_moves == 64000u);
+    CHECK(opt.refine_restarts == 32u);
+    CHECK(opt.jobs == 4u);
     CHECK(opt.w_crossings == 5.0f);
     CHECK(opt.pad_clearance == 0.5f);
     CHECK(opt.polish_reach == 0.20f);

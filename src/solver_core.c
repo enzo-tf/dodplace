@@ -9,6 +9,7 @@
 #include "ratsnest.h"
 #include "spatial_grid.h"
 #include "solver_best.h"
+#include "solver_restarts.h"
 #include "solver_state.h"
 #include "swap_detailed.h"
 
@@ -251,22 +252,40 @@ bool placer_solve(const placer_context_t *ctx, const solver_options_t *opt,
             return out_of_scratch((placer_context_t *)ctx, mark, stats);
         }
         solver_best_take(&s, &start);
-        const uint32_t seed0 = (opt->seed != 0u) ? opt->seed : 1u;
-        for (uint32_t restart = 0u; restart < restarts; ++restart) {
-            if (restart > 0u) {
-                s.rng = seed0 + restart * 0x9E3779B9u;
-                if (s.rng == 0u) {
-                    s.rng = 1u;
+        /* The restarts' bookkeeping - one row of poses per worker - is done
+         * with once the winner is in `s`, and the detailed stage that follows
+         * needs the room back: on r10 the parallel path left the arena three
+         * hundred kilobytes tighter and the Hungarian matrices did not fit. */
+        const arena_mark_t detail_mark = arena_mark(&((placer_context_t *)ctx)->scratch);
+        /* Two or more workers: one arena each, nothing shared but the scene,
+         * and the same ordering of the walks. */
+        if (opt->jobs >= 2u && restarts >= 2u) {
+            if (!solver_restarts_parallel(&s, restarts, opt->jobs)) {
+                return out_of_scratch((placer_context_t *)ctx, mark, stats);
+            }
+        } else {
+            const uint32_t seed0 = (opt->seed != 0u) ? opt->seed : 1u;
+            for (uint32_t restart = 0u; restart < restarts; ++restart) {
+                if (restart > 0u) {
+                    s.rng = seed0 + restart * 0x9E3779B9u;
+                    if (s.rng == 0u) {
+                        s.rng = 1u;
+                    }
+                    solver_best_restore(&s, &start);
                 }
-                solver_best_restore(&s, &start);
+                solver_refine(&s);
+                const solver_cost_t cost = solver_evaluate(&s);
+                /* Wirelength first, the score breaking a tie: same rule as the
+                 * workers and as the detailed stage. */
+                if (restart == 0u || cost.hpwl < best.cost.hpwl - 0.1f ||
+                    (fabsf(cost.hpwl - best.cost.hpwl) <= 0.1f &&
+                     cost.score < best.cost.score)) {
+                    solver_best_take(&s, &best);
+                }
             }
-            solver_refine(&s);
-            const solver_cost_t cost = solver_evaluate(&s);
-            if (restart == 0u || cost.score < best.cost.score) {
-                solver_best_take(&s, &best);
-            }
+            solver_best_restore(&s, &best);
         }
-        solver_best_restore(&s, &best);
+        arena_rewind(&((placer_context_t *)ctx)->scratch, detail_mark);
         swap_detailed_stage(&s);
     }
     const uint64_t t_refine1 = now_ns();

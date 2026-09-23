@@ -106,6 +106,7 @@ add_library(place STATIC
     src/solver_best.c
     src/solver_global.c
     src/solver_analytic.c
+    src/solver_restarts.c
     src/solver_refine.c
     src/solver_legal.c
     src/legalize_keepout.c
@@ -138,6 +139,14 @@ add_subdirectory(tests)
 # --- Python front end (optional) --------------------------------------------
 # The Python suite is normally run with `uv run pytest` from python/. Wire it
 # into ctest too when asked, so a single command covers the whole project.
+# --- Threads ----------------------------------------------------------------
+# The multi-start runs one annealing walk per core, each with its own arena, so
+# the build has to know where pthreads live (nothing to link on macOS, -pthread
+# elsewhere).
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+target_link_libraries(place PUBLIC Threads::Threads)
+
 option(DODPLACE_PYTHON_TESTS "Run the python/ pytest suite from ctest" OFF)
 if(DODPLACE_PYTHON_TESTS)
     find_program(UV_EXECUTABLE uv)

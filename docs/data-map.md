@@ -249,11 +249,35 @@ which the engine is not allowed to undo.
 | | |
 |---|---|
 | Configuration | the defaults: `--pad-clearance 0.50`, `--w-crossings 5.0`, `--polish-reach 0.20`, `--moves 32000`, `--restarts 16` |
-| HPWL | **28 153.6 mm** (input 31 699.6) — 3 546 mm better than the input and 8 659 mm better than the certified 36 812.2 mm baseline |
+| HPWL | **27 471.3 mm** (input 31 699.6) — 4 228 mm better than the input and 9 341 mm better than the certified 36 812.2 mm baseline |
 | Movable overlaps | **0** |
 | KiCad DRC | **0 courtyards_overlap · 0 shorting_items · 0 solder_mask_bridge**, and 0 clearance, 0 hole_clearance, 0 copper_edge_clearance |
 | Moves applied to the board | 208 of 707 footprints |
-| Time | 56 s (release) |
+| Time | 63 s (release, four walks at a time), 45 s with eight |
+
+### The walks run in parallel, and the curve has not flattened
+
+A walk touches nothing but the read-only scene, so the restarts are one job per
+core: each worker builds its own solver and its own arena, runs its own seed and
+reports a pose and a wirelength back. The winner is chosen by wirelength with
+the score breaking a tie - the same rule the detailed stage uses between its
+chains - and the selection is a total order, so the placement is identical
+whatever the job count:
+
+| moves per walk | walks | HPWL | wall clock |
+|---|---|---|---|
+| 4 000 | 16 | 29 573.3 mm | 0.8 s |
+| 32 000 | 16 | 28 153.6 mm | 56 s |
+| 64 000 | 16 | 27 400.0 mm* | 112 s |
+| **64 000** | **32** | **27 471.3 mm** | 63 s (`--jobs 4`), 45 s (`--jobs 8`) |
+| certified baseline | | 36 812.2 mm | |
+
+\*score-selected, before the selection rule changed, so not directly comparable.
+
+`--jobs 1` and `--jobs 2` were checked to give byte-identical placements, and the
+default (four workers, 32 walks) reproduces the placement verified at eight, byte
+for byte. The curve is still falling between 32 000 and 64 000 moves, so the
+floor is a budget line, not a plateau.
 
 ### The execution budget is the machine's
 

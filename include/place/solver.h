@@ -62,6 +62,7 @@ typedef struct {
     coord_t  anneal_t_start_ratio; /* 0.01: start temperature, as a share of the score */
     coord_t  anneal_t_end_ratio;   /* 1e-3: end temperature, as a share of the start */        /* annealing moves (12000) */
     uint32_t refine_restarts;     /* 1: independent annealing walks, best kept */
+    uint32_t jobs;                /* 1: walks run at once (one arena each) */
     uint32_t legalize_passes;
     uint32_t legalize_rounds;   /* slot-search rounds after the pushes settle */     /* push-out passes (80) */
 

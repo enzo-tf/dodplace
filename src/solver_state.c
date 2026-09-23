@@ -115,9 +115,15 @@ void solver_load_input_pose(solver_t *s)
 bool solver_state_init(solver_t *s, const placer_context_t *ctx,
                               const solver_options_t *opt)
 {
+    return solver_state_init_in(s, ctx, opt, &((placer_context_t *)ctx)->scratch);
+}
+
+bool solver_state_init_in(solver_t *s, const placer_context_t *ctx,
+                          const solver_options_t *opt, arena_t *scratch)
+{
     s->ctx = ctx;
     s->opt = opt;
-    s->scratch = (arena_t *)&((placer_context_t *)ctx)->scratch;
+    s->scratch = scratch;
     s->ncomp = ctx->comps.count;
     s->npin = ctx->pins.count;
     s->rng = (opt->seed == 0u) ? 1u : opt->seed;
@@ -207,10 +213,10 @@ bool solver_state_init(solver_t *s, const placer_context_t *ctx,
     s->slip_x = opt->max_slip_x;
     s->slip_y = opt->max_slip_y;
     if (s->slip_x <= 0.0f || s->slip_y <= 0.0f) {
-        coord_t *scratch = SOLVER_ALLOC(s, coord_t, (s->ncomp > 0u) ? s->ncomp : 1u);
-        if (scratch != nullptr) {
-            const coord_t pitch_x = solver_axis_pitch(scratch, s->x, s->ncomp);
-            const coord_t pitch_y = solver_axis_pitch(scratch, s->y, s->ncomp);
+        coord_t *pitch = SOLVER_ALLOC(s, coord_t, (s->ncomp > 0u) ? s->ncomp : 1u);
+        if (pitch != nullptr) {
+            const coord_t pitch_x = solver_axis_pitch(pitch, s->x, s->ncomp);
+            const coord_t pitch_y = solver_axis_pitch(pitch, s->y, s->ncomp);
             /* A wall only when the caller asks for one: on a board whose
              * incoming layout already has collisions - r10 has 74 - the lane
              * forbids the very moves that resolve them, and the result is

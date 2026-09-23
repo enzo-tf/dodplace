@@ -60,7 +60,7 @@ static void print_usage(FILE *out, const char *argv0)
                   "      --momentum F       Nesterov look-ahead for the analytic model (0.9)\n"
                   "      --density-bins N   bins per axis of the density grid (64)\n"
                   "      --iterations N     force-directed steps, default 400\n"
-                  "      --moves N          annealing moves per walk, default 32000\n"
+                  "      --moves N          annealing moves per walk, default 64000\n"
                   "      --no-cluster       skip semantic clustering\n"
                   "      --no-matching      skip the discrete decoupling assignment\n"
                   "      --swap-prob F      share of moves that exchange identical parts (0.15)\n"
@@ -68,6 +68,7 @@ static void print_usage(FILE *out, const char *argv0)
                   "      --swap-window N    parts per exact permutation window (5, 0 = off)\n"
                   "      --swap-assign N    smallest bucket solved by assignment (6, 0 = off)\n"
                   "      --restarts N       independent annealing walks, best kept (1)\n"
+                  "      --jobs N           walks run at once, one arena each (1)\n"
                   "      --pad-clearance MM copper-to-copper margin (default 0.5)\n"
                   "      --polish-reach MM  mask polish band above that margin (default 0.2)\n"
                   "      --w-crossings F    weight of the ratsnest crossing term (default 5.0)\n"
@@ -383,6 +384,14 @@ int main(int argc, char **argv)
                 return 2;
             }
             options.refine_restarts = (uint32_t)strtoul(argv[++i], nullptr, 10);
+            continue;
+        }
+        if (strcmp(arg, "--jobs") == 0) {
+            if (i + 1 >= argc) {
+                (void)fprintf(stderr, "error: --jobs needs a number\n");
+                return 2;
+            }
+            options.jobs = (uint32_t)strtoul(argv[++i], nullptr, 10);
             continue;
         }
         if (strcmp(arg, "--assign-model") == 0) {
