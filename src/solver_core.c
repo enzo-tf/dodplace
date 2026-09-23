@@ -10,7 +10,7 @@
 #include "spatial_grid.h"
 #include "solver_best.h"
 #include "solver_state.h"
-#include "swap_window.h"
+#include "swap_detailed.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -237,9 +237,7 @@ bool placer_solve(const placer_context_t *ctx, const solver_options_t *opt,
     const uint64_t t_global1 = now_ns();
     if (opt->enable_refine) {
         solver_refine(&s);
-        if (opt->swap_window >= 2u) {
-            (void)swap_window_pass(&s, opt->swap_window);
-        }
+        swap_detailed_stage(&s);
     }
     const uint64_t t_refine1 = now_ns();
     if (opt->enable_legalize) {

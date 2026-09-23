@@ -111,8 +111,11 @@ add_library(place STATIC
     src/legalize_keepout.c
     src/polish.c
     src/swap.c
+    src/swap_assign.c
     src/swap_buckets.c
+    src/swap_detailed.c
     src/swap_window.c
+    src/assign_hungarian.c
     src/lns_repair.c
     src/raster_mask.c
     src/matching_plan.c

@@ -220,7 +220,8 @@ solver entirely and echoes the input.
 | 3 incumbent | `solver_best.c` | legalises the input as it arrived and keeps that pose as the incumbent: the pose every later stage has to beat on the engine's own cost |
 | 4 global | `solver_global.c`, `solver_analytic.c` | force-directed relaxation: every net pulls its pins to a star around their centroid, locked parts act as anchors, and the parts push each other apart by one of two models — a pairwise 1/d² sum, or (the default) the ePlace density field below |
 | 5 refine | `solver_refine.c` | simulated annealing over swaps and rotations, then a deterministic rotation sweep; a rotation that would not fit the board is refused |
-| 5b windows | `swap_window.c` | after the annealer, every pair and every short run of interchangeable parts is permuted exactly: k parts have k! orderings, which is small enough to enumerate and too many for a random walk to find |
+| 5a assignment | `swap_assign.c`, `assign_hungarian.c` | every bucket of interchangeable parts is permuted as a whole: the star model gives a cost per pairing, the Hungarian method solves the bijection exactly |
+| 5b windows | `swap_window.c` | then every pair and every short run is permuted exactly on the *true* wirelength: k parts have k! orderings, small enough to enumerate and too many for a random walk to find |
 | 6 legalise | `solver_legal.c` | minimum-translation-vector push out of overlaps and keepouts, then spiral relocation for whatever still collides, clamped to the board |
 
 Stage 3 is what stops a redraw of a board that did not need one, and stage 4
@@ -248,11 +249,11 @@ which the engine is not allowed to undo.
 | | |
 |---|---|
 | Configuration | the defaults: `--pad-clearance 0.50`, `--w-crossings 5.0`, `--polish-reach 0.20`, `--moves 4000` |
-| HPWL | **29 437.8 mm** (input 31 699.6) — 2 262 mm better than the input and 7 374 mm better than the certified 36 812.2 mm baseline |
+| HPWL | **29 360.6 mm** (input 31 699.6) — 2 339 mm better than the input and 7 452 mm better than the certified 36 812.2 mm baseline |
 | Movable overlaps | **0** |
 | KiCad DRC | **0 courtyards_overlap · 0 shorting_items · 0 solder_mask_bridge**, and 0 clearance, 0 hole_clearance, 0 copper_edge_clearance |
 | Moves applied to the board | 194 of 707 footprints |
-| Time | 0.72 s (release), of which 0.06 s is the incumbent and 0.10 s is the relaxation that is thrown away |
+| Time | 0.75 s (release), of which 0.06 s is the incumbent and 0.10 s is the relaxation that is thrown away |
 
 ### The detailed pass: permuting interchangeable parts
 
@@ -284,6 +285,37 @@ not a change of random walk. It is also unnecessary: for twins that *do* carry
 the same nets the decoupling cost is already invariant, because the multiset of
 distances to the IC pins is what the rule charges for. The operator is therefore
 left honest, and the gain comes from the exhaustive permutation instead.
+
+### The whole bucket at once
+
+Windows are local by construction. A bucket and the poses it occupies are a
+square assignment problem, so `swap_assign.c` builds a cost per pairing and hands
+it to the Hungarian solver in `assign_hungarian.c`, which is exact in O(n³) -
+110 000 operations for the 48-capacitor bucket, a few milliseconds for all
+fourteen of them together. The cost is the star model (distance from each pin to
+the centroid of the *other* pins on its net) because the true wirelength is a sum
+of bounding boxes and is not separable over parts; the result is therefore
+scored with the engine's own cost before a bucket is allowed to keep it, and the
+window pass then works on the true wirelength.
+
+| Seed | windows only | assignment, then windows |
+|---|---|---|
+| 1 | 29 437.8 mm / 639 | **29 360.6 mm / 634** |
+| 42 | 29 673.6 mm / 717 | **29 654.2 mm / 713** |
+| 1337 | 29 840.1 mm / 630 | 29 840.1 mm / 630 |
+
+Multi-pin packages had to join the buckets for that: `--swap-max-pins 24` brings
+the 30 QSOP-24 drivers in, worth another 13-19 mm on the first two seeds and
+nothing on the third. The 480 LEDs stay out by design - the board marks 497
+footprints `(locked yes)`, and a locked part is the designer's.
+
+Two chains that are each monotone need not compose: the assignment lands the
+placement in a different basin and the windows then settle elsewhere, which cost
+17 score points on the third seed when the chained result was kept on the score
+alone. `swap_detailed.c` therefore runs both chains from the annealed placement
+and keeps the one with the lower **wirelength** - the metric the placement
+contract is written in - with the score breaking ties and the per-bucket gate
+still refusing any bucket whose rearrangement the engine's own cost calls worse.
 
 ### The two global models
 

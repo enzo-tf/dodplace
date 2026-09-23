@@ -28,3 +28,8 @@ add_executable(test_swap_window test_swap_window.c)
 target_link_libraries(test_swap_window PRIVATE place dodplace_flags)
 target_include_directories(test_swap_window PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME swap_window COMMAND test_swap_window)
+
+add_executable(test_assign test_assign.c)
+target_link_libraries(test_assign PRIVATE place dodplace_flags)
+target_include_directories(test_assign PRIVATE ${CMAKE_SOURCE_DIR}/src)
+add_test(NAME assign COMMAND test_assign)

@@ -72,6 +72,7 @@ typedef struct {
     coord_t swap_prob;            /* 0.15: share of moves that are part swaps */
     uint32_t swap_max_pins;       /* 6: only parts this small can be swapped (0 = any) */
     uint32_t swap_window;         /* 5: parts per permutation window (0 = off, max 6) */
+    uint32_t swap_assign_min;     /* 6: smallest bucket solved exactly (0 = off) */
     coord_t pad_clearance;
     coord_t polish_reach;         /* 0.20, mm under which the mask polish acts */        /* 0.25, mm between two parts' copper */
     coord_t max_slip_x;           /* mm a part may leave its anchor; 0 = derive */
