@@ -40,9 +40,17 @@ bool solver_best_adopt(solver_t *s, const solver_best_t *best)
     if (current.score <= best->cost.score) {
         return false;
     }
+    solver_best_restore(s, best);
+    return true;
+}
+
+void solver_best_restore(solver_t *s, const solver_best_t *best)
+{
+    if (!best->have) {
+        return;
+    }
     memcpy(s->x, best->x, slots(s) * sizeof(coord_t));
     memcpy(s->y, best->y, slots(s) * sizeof(coord_t));
     memcpy(s->orient, best->orient, slots(s) * sizeof(uint8_t));
     solver_rebuild_extents(s);
-    return true;
 }

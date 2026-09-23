@@ -112,6 +112,7 @@ add_library(place STATIC
     src/polish.c
     src/swap.c
     src/swap_buckets.c
+    src/swap_window.c
     src/lns_repair.c
     src/raster_mask.c
     src/matching_plan.c

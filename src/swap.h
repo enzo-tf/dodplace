@@ -36,4 +36,13 @@ bool swap_propose(solver_t *s, swap_move_t *move);
 /* Puts both parts back. */
 void swap_undo(solver_t *s, const swap_move_t *move);
 
+/* True when the two parts are instances of the same part: same identity, same
+ * footprint, same face, same rotation freedom. Nothing about them can be told
+ * apart on the board, so exchanging their poses moves no rectangle. */
+static inline bool swap_same_bucket(const solver_t *s, uint32_t a, uint32_t b)
+{
+    return s->swap_bucket_of != nullptr && s->swap_bucket_of[a] != SOLVER_NO_INDEX &&
+           s->swap_bucket_of[a] == s->swap_bucket_of[b];
+}
+
 #endif /* PLACE_SWAP_H */

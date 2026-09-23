@@ -87,7 +87,9 @@ typedef struct {
     uint32_t *swap_first;
     uint32_t *swap_len;
     uint32_t *swap_member;
+    uint32_t *swap_bucket_of; /* bucket index per component, NONE when it has none */
     uint32_t  swap_bucket_count;
+
 
     /* Nets that are rails rather than traces: ground and power, and anything
      * wider than max_net_degree. Built once at init. */

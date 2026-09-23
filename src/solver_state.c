@@ -343,6 +343,7 @@ bool solver_state_init(solver_t *s, const placer_context_t *ctx,
         return false;
     }
 
+
     /* Which nets are rails. A net is one when any of its pins is a declared
      * ground or power pin, or when it simply has too many pins to be a trace;
      * the second test catches the LED rails on r10, whose pins carry no role. */

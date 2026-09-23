@@ -61,6 +61,10 @@ void solver_options_defaults(solver_options_t *opt)
      * measured on its own. */
     opt->swap_prob = 0.15f;
     opt->swap_max_pins = 6u;
+    /* Short alignments of interchangeable parts are permuted exactly, after the
+     * annealer: k! is small enough to enumerate and too large for a random walk
+     * to find inside a 4000-move budget. */
+    opt->swap_window = 5u;
     opt->pad_clearance = 0.5f;
     /* The mask rule sits a little outside the copper margin; 0.20 covers the
      * r10 pairs (0.646 and 0.650 mm) with margin to spare. */

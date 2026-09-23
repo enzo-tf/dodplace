@@ -32,4 +32,7 @@ void solver_best_take(solver_t *s, solver_best_t *best);
  * the pose was replaced. */
 bool solver_best_adopt(solver_t *s, const solver_best_t *best);
 
+/* Put the incumbent's pose back, whatever the current score says. */
+void solver_best_restore(solver_t *s, const solver_best_t *best);
+
 #endif /* PLACE_SOLVER_BEST_H */

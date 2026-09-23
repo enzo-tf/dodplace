@@ -65,6 +65,7 @@ static void print_usage(FILE *out, const char *argv0)
                   "      --no-matching      skip the discrete decoupling assignment\n"
                   "      --swap-prob F      share of moves that exchange identical parts (0.15)\n"
                   "      --swap-max-pins N  only parts with at most this many pins (6)\n"
+                  "      --swap-window N    parts per exact permutation window (5, 0 = off)\n"
                   "      --pad-clearance MM copper-to-copper margin (default 0.5)\n"
                   "      --polish-reach MM  mask polish band above that margin (default 0.2)\n"
                   "      --w-crossings F    weight of the ratsnest crossing term (default 5.0)\n"
@@ -356,6 +357,14 @@ int main(int argc, char **argv)
             } else {
                 options.swap_max_pins = (uint32_t)strtoul(value, nullptr, 10);
             }
+            continue;
+        }
+        if (strcmp(arg, "--swap-window") == 0) {
+            if (i + 1 >= argc) {
+                (void)fprintf(stderr, "error: --swap-window needs a number\n");
+                return 2;
+            }
+            options.swap_window = (uint32_t)strtoul(argv[++i], nullptr, 10);
             continue;
         }
         if (strcmp(arg, "--pad-clearance") == 0 || strcmp(arg, "--w-crossings") == 0 ||

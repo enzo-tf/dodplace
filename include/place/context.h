@@ -202,6 +202,11 @@ typedef struct {
     coord_t mass;
     const coord_t *polygon_xy; /* interleaved x,y courtyard; may be null */
     uint32_t polygon_n;        /* vertex count, >= 3 to be honoured */
+    /* Hashed supplier part number: two parts with the same identity and the
+     * same footprint are interchangeable, which is what lets the detailed
+     * placer permute them without moving a single rectangle. 0 = unknown, and
+     * an unknown part is never permuted. */
+    uint32_t part_id;
 } component_desc_t;
 
 /*

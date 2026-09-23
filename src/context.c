@@ -331,7 +331,9 @@ static bool alloc_scene_arrays(placer_context_t *ctx)
     ALLOC_ARR(cs->first_pin, place_id_t, c->num_comps);
     ALLOC_ARR(cs->pin_count, place_count_t, c->num_comps);
     ALLOC_ARR(cs->polygon_id, place_id_t, c->num_comps);
-    ALLOC_ARR(cs->part_id, uint32_t, c->num_comps);
+    /* Zero-filled: 0 means "identity unknown", and an uninitialised word here
+     * would put two unrelated parts in one swap bucket. */
+    ALLOC_ARR0(cs->part_id, uint32_t, c->num_comps);
     cs->count = 0u;
     cs->capacity = c->num_comps;
 
@@ -676,6 +678,7 @@ place_id_t placer_add_component(placer_context_t *ctx, const component_desc_t *d
     ctx->comps.first_pin[id] = 0u; /* prefix-computed in finalize */
     ctx->comps.pin_count[id] = 0u;
     ctx->comps.polygon_id[id] = polygon_id;
+    ctx->comps.part_id[id] = desc->part_id;
     ctx->comps.count = id + 1u;
     return id;
 }

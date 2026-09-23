@@ -23,3 +23,8 @@ add_executable(test_analytic test_analytic.c)
 target_link_libraries(test_analytic PRIVATE place dodplace_flags)
 target_include_directories(test_analytic PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME analytic COMMAND test_analytic)
+
+add_executable(test_swap_window test_swap_window.c)
+target_link_libraries(test_swap_window PRIVATE place dodplace_flags)
+target_include_directories(test_swap_window PRIVATE ${CMAKE_SOURCE_DIR}/src)
+add_test(NAME swap_window COMMAND test_swap_window)

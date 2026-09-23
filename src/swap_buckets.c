@@ -95,8 +95,12 @@ bool swap_buckets_build(solver_t *s)
     s->swap_first = SOLVER_ALLOC(s, uint32_t, (n > 0u) ? n : 1u);
     s->swap_len = SOLVER_ALLOC(s, uint32_t, (n > 0u) ? n : 1u);
     s->swap_member = SOLVER_ALLOC(s, uint32_t, (n > 0u) ? n : 1u);
+    s->swap_bucket_of = SOLVER_ALLOC(s, uint32_t, (n > 0u) ? n : 1u);
     if (!s->ok) {
         return false;
+    }
+    for (uint32_t i = 0u; i < n; ++i) {
+        s->swap_bucket_of[i] = SOLVER_NO_INDEX;
     }
     uint32_t count = 0u;
     for (uint32_t i = 0u; i < n; ++i) {
@@ -132,6 +136,7 @@ bool swap_buckets_build(solver_t *s)
             s->swap_len[s->swap_bucket_count] = j - i;
             for (uint32_t k = i; k < j; ++k) {
                 s->swap_member[write++] = order[k];
+                s->swap_bucket_of[order[k]] = s->swap_bucket_count;
             }
             s->swap_bucket_count += 1u;
         }

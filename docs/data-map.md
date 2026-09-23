@@ -220,6 +220,7 @@ solver entirely and echoes the input.
 | 3 incumbent | `solver_best.c` | legalises the input as it arrived and keeps that pose as the incumbent: the pose every later stage has to beat on the engine's own cost |
 | 4 global | `solver_global.c`, `solver_analytic.c` | force-directed relaxation: every net pulls its pins to a star around their centroid, locked parts act as anchors, and the parts push each other apart by one of two models — a pairwise 1/d² sum, or (the default) the ePlace density field below |
 | 5 refine | `solver_refine.c` | simulated annealing over swaps and rotations, then a deterministic rotation sweep; a rotation that would not fit the board is refused |
+| 5b windows | `swap_window.c` | after the annealer, every pair and every short run of interchangeable parts is permuted exactly: k parts have k! orderings, which is small enough to enumerate and too many for a random walk to find |
 | 6 legalise | `solver_legal.c` | minimum-translation-vector push out of overlaps and keepouts, then spiral relocation for whatever still collides, clamped to the board |
 
 Stage 3 is what stops a redraw of a board that did not need one, and stage 4
@@ -247,11 +248,42 @@ which the engine is not allowed to undo.
 | | |
 |---|---|
 | Configuration | the defaults: `--pad-clearance 0.50`, `--w-crossings 5.0`, `--polish-reach 0.20`, `--moves 4000` |
-| HPWL | **29 818.9 mm** (input 31 699.6) — 1 881 mm better than the input and 6 993 mm better than the certified 36 812.2 mm baseline |
+| HPWL | **29 437.8 mm** (input 31 699.6) — 2 262 mm better than the input and 7 374 mm better than the certified 36 812.2 mm baseline |
 | Movable overlaps | **0** |
 | KiCad DRC | **0 courtyards_overlap · 0 shorting_items · 0 solder_mask_bridge**, and 0 clearance, 0 hole_clearance, 0 copper_edge_clearance |
 | Moves applied to the board | 194 of 707 footprints |
-| Time | 0.70 s (release), of which 0.06 s is the incumbent and 0.10 s is the relaxation that is thrown away |
+| Time | 0.72 s (release), of which 0.06 s is the incumbent and 0.10 s is the relaxation that is thrown away |
+
+### The detailed pass: permuting interchangeable parts
+
+707 parts on r10 fall into 14 buckets of interchangeable twins (same part number,
+same footprint, same face): 48 capacitors, 31 capacitors, 30 resistors, 30
+QSOP-24 drivers, and smaller runs. Permuting *poses* inside a bucket cannot move
+a rectangle - the same shapes sit on the same slots afterwards - so the DRC is
+invariant by construction and only the netlist assignment changes.
+
+| Configuration | seed 1 | seed 42 | seed 1337 |
+|---|---|---|---|
+| no window pass | 29 818.9 | 30 345.0 | 30 398.1 |
+| `--swap-window 5` (default) | **29 437.8** | **29 673.6** | **29 840.1** |
+| `--swap-window 5 --swap-max-pins 24` | 29 425.0 | 29 654.2 | 29 840.1 |
+
+The gain is robust across seeds (-381, -671, -558 mm) where a tuned annealing
+parameter is not: a sweep of `--swap-prob` over 0.15…0.6 moved the mean by 5 mm
+and the worst seed by 640 mm, which is noise, so the default stays where the
+calibration left it.
+
+**The fungibility premise was measured, and it does not hold as stated.** Two
+capacitors of the same value are interchangeable only if they also carry the
+same nets: of the 2 660 same-part pairs on r10, **1 055 do not**, and 8 of the 37
+pairs that both have a decoupling row decouple a *different* IC pin. Neutralising
+the decoupling delta for every same-part swap (letting the rows follow the slot)
+costs **327 mm** on the reference seed - 30 145.7 against 29 818.9 - with the
+trajectory otherwise bit-identical, so the loss is the neutralisation itself and
+not a change of random walk. It is also unnecessary: for twins that *do* carry
+the same nets the decoupling cost is already invariant, because the multiset of
+distances to the IC pins is what the rule charges for. The operator is therefore
+left honest, and the gain comes from the exhaustive permutation instead.
 
 ### The two global models
 

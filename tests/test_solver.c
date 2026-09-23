@@ -178,8 +178,8 @@ static void test_defaults_are_sane(void)
     CHECK(opt.enable_global && opt.enable_refine && opt.enable_legalize);
     CHECK(opt.enable_matching); /* on by default once the overlap count was exact */
 
-    /* The reference configuration on r10 (HPWL 29 818.9 mm, 0 movable overlap,
-     * KiCad DRC 0/0/0 in 0.85 s). It is a contract, not a coincidence -
+    /* The reference configuration on r10 (HPWL 29 437.8 mm, 0 movable overlap,
+     * KiCad DRC 0/0/0 in 0.72 s). It is a contract, not a coincidence -
      * changing any of these silently invalidates the reference. */
     CHECK(opt.refine_moves == 4000u);
     CHECK(opt.w_crossings == 5.0f);
@@ -192,6 +192,7 @@ static void test_defaults_are_sane(void)
     CHECK(opt.global_model == GLOBAL_MODEL_ANALYTIC);
     CHECK(opt.density_bins == 64u);
     CHECK(opt.momentum == 0.9f);
+    CHECK(opt.swap_window == 5u);
     CHECK(opt.seed != 0u);
     CHECK(opt.board_margin > 0.0f);
 }
