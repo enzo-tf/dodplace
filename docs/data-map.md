@@ -484,23 +484,39 @@ look-ahead point, momentum retained, step length normalised by the largest force
 
 ### Left for the next pass: silkscreen
 
-**Status, cycle 11.** The producer side is done (`extract.json` carries 19 308
-capsules on r10, schema-validated) and a detector plus a micro-nudge exist in
-`python/src/dodplace/kicad/silk.py` - exact capsule-vs-box and capsule-vs-capsule
-tests, a 0.05 mm grid up to 0.20 mm, and the three guards. Run on r10's final
-placement it takes `silk_overlap` from **6 to 1** and leaves
-`silk_over_copper` at 1 - and it *breaks the copper gate*: two courtyard
-overlaps, a short and a mask bridge appear. The reason is in the guard, not in
-the geometry: a footprint with no courtyard in the extract (a mounting hole, a
-connector) escapes the courtyard test, and the pass is therefore **opt-in**
-(`dodplace apply --silk-polish`) until the guard falls back to the pad bounding
-box the way the ingest does. The shipped path does not move anything for silk,
-and its board is byte-identical to the one measured at 26 766.1 mm with
-0 courtyard / 0 short / 0 bridge / 0 clearance / 0 hole / 0 edge.
+**Status, cycle 12: shipped.** The producer side (`extract.json` carries 19 308
+capsules on r10, schema-validated) and the consumer
+(`python/src/dodplace/kicad/silk.py`) are both in place: exact capsule-vs-box and
+capsule-vs-capsule tests (Liang-Barsky and a segment-segment distance, no
+bounding box anywhere), a 0.05 mm grid out to 0.20 mm, and three guards. The pass
+is on by default in `dodplace apply` (`--no-silk-polish` opts out).
 
-The engine-side design is unchanged and still the plan: kinds 45 (capsules) and
-46 (the component-to-silk CSR) in the IR, `silk_check.c` for the same two
-distance tests in C, and the nudge at the end of the legalise stage.
+| | reference | with the silk pass |
+|---|---|---|
+| `silk_overlap` | 6 | **5** |
+| `silk_over_copper` | 1 | **0** |
+| courtyards / shorts / bridges / clearance / holes / edges | 0 each | **0 each** |
+| wirelength | - | +4.91 mm (the guard allows 5) |
+| wall clock, apply step | 0.43 s | **15.88 s** |
+
+Three things had to be right before the gate held, and each was found by
+running it:
+
+  * a footprint with no courtyard polygon still has one for every purpose that
+    matters - eleven of them on r10 - so the guard synthesises the pad bounding
+    box plus the 0.25 mm courtyard margin, the rule the ingest already applies,
+    with a drilled pad counted at its drill;
+  * the courtyard box has to *travel* with the footprint. Testing a candidate
+    offset against the box the part had before the offset is what let the first
+    two versions walk a part into its neighbour;
+  * the one that cost the most to see: on a 90-degree footprint the pads'
+    bounding box transposes - the extractor had been storing the pad's absolute
+    rotation where the engine wants it relative to the footprint.
+
+The test suite grew no silk case yet; the numbers above are the test, and the
+engine-side port - kinds 45/46, `silk_check.c`, the nudge at the end of the
+legalise stage - stays documented as the way to take 15.88 s down to
+milliseconds. It is no longer on the critical path.
 
 The r10 run leaves 7 `silk_over_copper` and 3 `silk_overlap` warnings (KiCad
 severity: warning; the DRC contract is about courtyard overlaps, shorts and mask

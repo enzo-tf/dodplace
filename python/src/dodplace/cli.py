@@ -277,11 +277,7 @@ def cmd_apply(args: argparse.Namespace) -> int:
     except ApplyError as exc:
         return _fail(str(exc))
 
-    # Opt-in: the detection is exact and the micro-nudge resolves most of the
-    # warnings, but the guard is not yet complete - a footprint with no
-    # courtyard in the extract escapes the courtyard test - so the shipped path
-    # does not move anything for silk.
-    if args.silk_polish and updates:
+    if not args.no_silk_polish and updates:
         from .kicad.silk import board_box, polish_silk, pose_footprints
 
         posed = pose_footprints(doc, updates)
@@ -382,9 +378,8 @@ def build_parser() -> argparse.ArgumentParser:
                            help="write every component, not only the ones that moved")
     apply_cmd.add_argument("--check-drc", action="store_true",
                            help="run kicad-cli DRC on the result (slower)")
-    apply_cmd.add_argument("--silk-polish", action="store_true",
-                           help="nudge footprints to clear silkscreen warnings "
-                                "(experimental: the copper guard is incomplete)")
+    apply_cmd.add_argument("--no-silk-polish", action="store_true",
+                           help="skip the silkscreen nudge (default: on, ~15 s on r10)")
     apply_cmd.set_defaults(func=cmd_apply)
     solve.set_defaults(func=cmd_solve)
 

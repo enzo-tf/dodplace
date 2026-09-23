@@ -206,19 +206,32 @@ def pose_footprints(extract: dict, updates: list) -> list[dict]:
             size_y = max(float(pad.get("size_y", 0.0)), float(pad.get("drill") or 0.0))
             pads.append({"net": pad.get("net"), "x": px, "y": py,
                          "half_w": size_x * 0.5, "half_h": size_y * 0.5})
-        courtyard = _courtyard_box(comp, place)
+        courtyard = _courtyard_box(comp, place, pads)
         out.append({"ref": comp["ref"], "side": comp.get("side", "top"),
                     "x": origin_x, "y": origin_y, "rot_deg": angle,
                     "silk": silk, "pads": pads, "courtyard": courtyard})
     return out
 
 
-def _courtyard_box(comp: dict, place) -> tuple | None:
-    """World AABB of the courtyard: the rule KiCad checks beside the pads."""
+def _courtyard_box(comp: dict, place, pads: list[dict], margin: float = 0.25) -> tuple | None:
+    """World AABB of the courtyard: the rule KiCad checks beside the pads.
+
+    A footprint that declares no courtyard polygon still has one for every
+    purpose that matters - eleven of them on r10, mounting holes and connectors
+    among them - and leaving it out is what let the first version of the nudge
+    walk a part into its neighbour. The fallback is the rule the ingest already
+    applies: the pad bounding box plus the courtyard margin, where a drilled pad
+    counts at its drill.
+    """
     rings = comp.get("courtyard") or []
     points = [p for ring in rings for p in ring]
     if not points:
-        return None
+        if not pads:
+            return None
+        return (min(p["x"] - p["half_w"] for p in pads) - margin,
+                min(p["y"] - p["half_h"] for p in pads) - margin,
+                max(p["x"] + p["half_w"] for p in pads) + margin,
+                max(p["y"] + p["half_h"] for p in pads) + margin)
     lo_x = hi_x = place(float(points[0][0]), float(points[0][1]))[0]
     lo_y = hi_y = place(float(points[0][0]), float(points[0][1]))[1]
     for px, py in points:
@@ -231,6 +244,12 @@ def _courtyard_box(comp: dict, place) -> tuple | None:
 def _shift(fp: dict, dx: float, dy: float) -> None:
     fp["x"] += dx
     fp["y"] += dy
+    # The courtyard box has to travel with the footprint: testing a candidate
+    # offset against the box it had *before* the offset is how the first two
+    # versions of this guard let a part be walked into its neighbour.
+    if fp.get("courtyard"):
+        lo_x, lo_y, hi_x, hi_y = fp["courtyard"]
+        fp["courtyard"] = (lo_x + dx, lo_y + dy, hi_x + dx, hi_y + dy)
     for seg in fp.get("silk") or []:
         seg[0] += dx
         seg[1] += dy
