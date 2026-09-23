@@ -139,6 +139,7 @@ typedef struct {
 /*
  * pin_flags packs the electrical role, upgraded from optional PDF/pinout data:
  *   [0] power rail, [1] ground, [2]/[3] differential P/N, [4] clock,
+ *   [5] plated through hole, [6] non-plated hole,
  *   [7] value came from name inference rather than authoritative data.
  */
 typedef uint8_t pin_flags_t;
@@ -150,6 +151,10 @@ enum : pin_flags_t {
     PIN_DIFF_N   = 0x08u,
     PIN_CLOCK    = 0x10u,
     PIN_PTH      = 0x20u,   /* the pad is a plated through hole: copper on both faces */
+    /* A non-plated hole carries no copper, but it is still a hole: the drill
+     * and the solder-mask opening around it cut through every layer, so a part
+     * on the far side of the board cannot be placed over it either. */
+    PIN_NPTH     = 0x40u,
     PIN_INFERRED = 0x80u
 };
 

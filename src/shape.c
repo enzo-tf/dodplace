@@ -42,11 +42,14 @@ static void copper_box(const solver_t *s, uint32_t k, coord_t x, coord_t y, coor
 static bool collide_at(const solver_t *s, uint32_t i, coord_t xi, coord_t yi, uint32_t j,
                        coord_t xj, coord_t yj, coord_t gap)
 {
-    /* One side at a time - the rule KiCad applies - with the plated through
-     * hole as the only exception. The filter is skipped when the scene does
-     * not say which pads are plated, so an old scene cannot silently allow a
-     * cross-side overlap. */
-    if (s->pth_known && !same_side(s, i, j) && s->has_pth[i] == 0u && s->has_pth[j] == 0u) {
+    /* One side at a time - the rule KiCad applies - with a drilled hole as the
+     * only exception: a hole crosses every layer, plated or not, so U36 landing
+     * on H3's mounting hole was a mask bridge, a hole-clearance error and an
+     * edge-clearance error at once on r10. The filter is skipped when the scene
+     * does not say which pads are holes, so an old scene cannot silently allow
+     * a cross-side overlap. */
+    if (s->sides_known && !same_side(s, i, j) && s->spans_sides[i] == 0u &&
+        s->spans_sides[j] == 0u) {
         return false;
     }
 

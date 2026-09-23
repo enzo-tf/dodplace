@@ -99,6 +99,7 @@ add_library(place STATIC
     src/overlap_collect.c
     src/overlap_count.c
     src/solver_cluster.c
+    src/solver_best.c
     src/solver_global.c
     src/solver_refine.c
     src/solver_legal.c

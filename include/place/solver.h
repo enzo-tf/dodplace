@@ -114,6 +114,7 @@ typedef struct {
     /* --- the same number, split by stage (a bench needs to know where the
      * time went, not just how much there was) ---------------------------- */
     coord_t  seconds_cluster;
+    coord_t  seconds_incumbent;   /* legalising the input: the pose to beat */
     coord_t  seconds_global;
     coord_t  seconds_refine;
     coord_t  seconds_legalize;

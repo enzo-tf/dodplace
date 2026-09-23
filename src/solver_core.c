@@ -8,6 +8,7 @@
 #include "matching.h"
 #include "ratsnest.h"
 #include "spatial_grid.h"
+#include "solver_best.h"
 #include "solver_state.h"
 
 #include <math.h>
@@ -21,6 +22,21 @@ static uint64_t now_ns(void)
     struct timespec ts;
     (void)clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000000ull + (uint64_t)ts.tv_nsec;
+}
+
+/* The arena ran out: report how much was needed, then unwind. */
+static bool out_of_scratch(placer_context_t *ctx, arena_mark_t mark, solver_stats_t *stats)
+{
+    if (stats != nullptr) {
+        memset(stats, 0, sizeof *stats);
+        stats->scratch_needed = ctx->scratch.used;
+    }
+    (void)fprintf(stderr,
+                  "solver: the scratch arena is too small (%zu bytes used, %zu "
+                  "available); the scene was built with a smaller estimate\n",
+                  ctx->scratch.used, ctx->scratch.capacity);
+    arena_rewind(&ctx->scratch, mark);
+    return false;
 }
 
 solver_cost_t solver_evaluate(solver_t *s)
@@ -111,17 +127,7 @@ bool placer_solve(const placer_context_t *ctx, const solver_options_t *opt,
     solver_t s;
     memset(&s, 0, sizeof s);
     if (!solver_state_init(&s, ctx, opt)) {
-        const size_t used = ((placer_context_t *)ctx)->scratch.used;
-        if (stats != nullptr) {
-            memset(stats, 0, sizeof *stats);
-            stats->scratch_needed = used;
-        }
-        (void)fprintf(stderr,
-                      "solver: the scratch arena is too small (%zu bytes used, %zu "
-                      "available); the scene was built with a smaller estimate\n",
-                      used, ((placer_context_t *)ctx)->scratch.capacity);
-        arena_rewind(&((placer_context_t *)ctx)->scratch, mark);
-        return false;
+        return out_of_scratch((placer_context_t *)ctx, mark, stats);
     }
 
     /* Grids are sized once from the board extents, then rebuilt in place. */
@@ -158,7 +164,36 @@ bool placer_solve(const placer_context_t *ctx, const solver_options_t *opt,
         s.stats.locked_overlaps = solver_count_locked_conflicts(&s, 0.0f);
     }
 
-    const uint64_t t_global0 = now_ns();
+    /*
+     * The incumbent. The input is a placement too - usually the one a human
+     * signed off - so legalising it as it stands costs one pass and gives the
+     * pipeline something to beat. Everything below runs from the input again,
+     * and is adopted only if it scores better (solver_best.c).
+     */
+    const uint64_t t_incumbent0 = now_ns();
+    const bool transformed = opt->enable_global || opt->enable_refine;
+    solver_best_t incumbent;
+    if (transformed) {
+        if (!solver_best_init(&s, &incumbent)) {
+            return out_of_scratch((placer_context_t *)ctx, mark, stats);
+        }
+        /* The discrete assignment belongs to the incumbent: choosing which
+         * capacitor fills which slot changes no rectangle, so it is the one
+         * stage that can improve a layout the designer already signed off. */
+        if (opt->enable_matching) {
+            (void)matching_assign_decoupling(&s);
+        }
+        if (opt->enable_legalize) {
+            solver_legalize(&s);
+        }
+        solver_best_take(&s, &incumbent);
+        solver_load_input_pose(&s);
+        solver_sync_cluster_members(&s);
+        solver_rebuild_extents(&s);
+    }
+    const uint64_t t_incumbent1 = now_ns();
+
+    const uint64_t t_global0 = t_incumbent1;
     if (opt->enable_global) {
         solver_global(&s);
         /* The relaxation is continuous and knows nothing of lanes; bring it
@@ -180,10 +215,14 @@ bool placer_solve(const placer_context_t *ctx, const solver_options_t *opt,
     if (opt->enable_legalize) {
         solver_legalize(&s);
     }
+    if (transformed) {
+        (void)solver_best_adopt(&s, &incumbent);
+    }
     const uint64_t t_legal1 = now_ns();
 
     const double ns_to_s = 1e-9;
     s.stats.seconds_cluster = (coord_t)((double)(t_cluster1 - t_cluster0) * ns_to_s);
+    s.stats.seconds_incumbent = (coord_t)((double)(t_incumbent1 - t_incumbent0) * ns_to_s);
     s.stats.seconds_global = (coord_t)((double)(t_global1 - t_global0) * ns_to_s);
     s.stats.seconds_refine = (coord_t)((double)(t_refine1 - t_global1) * ns_to_s);
     s.stats.seconds_legalize = (coord_t)((double)(t_legal1 - t_refine1) * ns_to_s);

@@ -172,6 +172,7 @@ PIN_DIFF_P = 0x04
 PIN_DIFF_N = 0x08
 PIN_CLOCK = 0x10
 PIN_PTH = 0x20
+PIN_NPTH = 0x40
 PIN_INFERRED = 0x80
 
 # Polygon kinds (place/constraints.h).

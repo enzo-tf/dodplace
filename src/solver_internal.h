@@ -97,13 +97,14 @@ typedef struct {
     uint32_t *hot;
     uint32_t  nhot;
 
-    /* Through-hole pads: a plated hole carries copper on both faces, so a part
-     * that has one collides with parts on the other side too. Derived from the
-     * pin flags at init; `pth_known` is false when the scene carries none and
-     * the board should have some, in which case the side filter is not applied
-     * at all rather than silently allowing cross-side overlaps. */
-    uint8_t *has_pth;
-    bool     pth_known;
+    /* Holes: a plated hole carries copper on both faces, and a non-plated one
+     * still drills through them, so a part that has either collides with parts
+     * on the far side of the board too. Derived from the pin flags at init;
+     * `sides_known` is false when the scene carries none and the board should
+     * have some, in which case the side filter is not applied at all rather
+     * than silently allowing cross-side overlaps. */
+    uint8_t *spans_sides;
+    bool     sides_known;
 
     /* The designer's placement, kept as an immutable anchor, and how far a
      * part may leave it. The coarse position of a schematic capture carries

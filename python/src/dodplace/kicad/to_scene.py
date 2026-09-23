@@ -31,6 +31,7 @@ from ..ir.spec import (
     DEGRADED_BY_NAME,
     NO_ID,
     PIN_INFERRED,
+    PIN_NPTH,
     PIN_PTH,
     POLY_KIND_BOARD_OUTLINE,
     POLY_KIND_COURTYARD,
@@ -395,6 +396,11 @@ def build_scene(
             half_x, half_y = _pad_half_extents(pad)
             if pad.get("attrib") == "pth":
                 pin_flags |= PIN_PTH
+            elif pad.get("attrib") == "npth":
+                # A non-plated hole is not copper, but it is still a hole: its
+                # drill and mask opening cross every layer, so the far side of
+                # the board is not free either.
+                pin_flags |= PIN_NPTH
             builder.add_pin(
                 comp_id,
                 pad["x"],

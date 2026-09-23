@@ -269,6 +269,9 @@ size_t placer_context_estimate_scratch_bytes(const scene_counts_t *counts)
         bytes += ctx_estimate_array(sizeof(coord_t), (size_t)counts->num_pins * 4u) * 8u;
         bytes += ctx_estimate_array(sizeof(coord_t), (size_t)counts->num_pins) * 5u;
         bytes += ctx_estimate_array(sizeof(coord_t), (size_t)counts->num_comps * 32u);
+        /* the incumbent pose, kept while the transformed pipeline runs */
+        bytes += ctx_estimate_array(sizeof(coord_t), (size_t)counts->num_comps * 2u);
+        bytes += ctx_estimate_array(sizeof(uint8_t), (size_t)counts->num_comps);
         /* the spatial grids' item lists: exact, and larger than one entry per
          * part because a footprint spans however many cells its box covers */
         bytes += ctx_estimate_array(sizeof(uint32_t), (size_t)counts->num_comps * 16u);
@@ -1268,4 +1271,3 @@ bool placer_context_finalize(placer_context_t *ctx)
 /* ========================================================================= */
 /* Validation                                                                */
 /* ========================================================================= */
-

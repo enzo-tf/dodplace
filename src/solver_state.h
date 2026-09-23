@@ -15,4 +15,8 @@ coord_t solver_axis_pitch(coord_t *scratch, const coord_t *values, uint32_t coun
 
 bool solver_state_init(solver_t *s, const placer_context_t *ctx, const solver_options_t *opt);
 
+/* Load the designer's pose back into the working placement: what the scenes
+ * arrived with, before any stage touched it. */
+void solver_load_input_pose(solver_t *s);
+
 #endif /* PLACE_SOLVER_STATE_H */

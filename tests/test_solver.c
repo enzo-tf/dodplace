@@ -177,9 +177,9 @@ static void test_defaults_are_sane(void)
     CHECK(opt.enable_global && opt.enable_refine && opt.enable_legalize);
     CHECK(opt.enable_matching); /* on by default once the overlap count was exact */
 
-    /* The Gold configuration: the reference run on r10 (HPWL 36 812.2 mm,
-     * 0 movable overlap, KiCad DRC 0/0/0 in 0.88 s). It is a contract, not a
-     * coincidence - changing any of these silently invalidates the reference. */
+    /* The reference configuration on r10 (HPWL 31 344.5 mm, 0 movable overlap,
+     * KiCad DRC 0/0/0 in 0.92 s). It is a contract, not a coincidence -
+     * changing any of these silently invalidates the reference. */
     CHECK(opt.refine_moves == 4000u);
     CHECK(opt.w_crossings == 5.0f);
     CHECK(opt.pad_clearance == 0.5f);
@@ -398,6 +398,106 @@ static void test_the_solver_leaves_no_trace_in_the_scratch(void)
     placer_context_destroy(&ctx);
 }
 
+/* ------------------------------------------------------------------------- */
+/* A hole crosses every layer                                                */
+/* ------------------------------------------------------------------------- */
+
+enum {
+    HOLE_SOT = 0,      /* a bottom-side part, free to move */
+    HOLE_MOUNT = 1,    /* the mounting hole, on the top side, locked */
+    HOLE_CONNECTOR = 2,/* carries the plated hole that makes the scene explicit */
+    HOLE_COUNT = 3
+};
+
+/*
+ * The three parts are the three rows of the r10 report: a bottom-side SOT
+ * whose pad ended up on a mounting hole, the hole itself, and a part that
+ * carries a plated through hole, so the scene tells the engine which pads are
+ * holes at all.
+ */
+static bool build_hole_scene(placer_context_t *ctx, pin_flags_t hole_flag)
+{
+    const scene_counts_t counts = {
+        .num_comps = HOLE_COUNT,
+        .num_pins = HOLE_COUNT,
+        .num_nets = 1u,
+        .num_net_entries = HOLE_COUNT,
+        .num_polygons = 1u,
+        .num_vertices = 5u,
+    };
+    if (!placer_context_begin(ctx, &counts, nullptr)) {
+        return false;
+    }
+
+    const coord_t outline[10] = {0.0f, 0.0f, 40.0f, 0.0f, 40.0f, 30.0f, 0.0f, 30.0f, 0.0f, 0.0f};
+    CHECK(placer_add_polygon(ctx, POLY_KIND_BOARD_OUTLINE, outline, 5u, 0u) != PLACE_ID_NONE);
+
+    const component_desc_t sot = {
+        .x = 20.0f, .y = 10.0f, .half_w = 1.0f, .half_h = 1.0f,
+        .on_bottom = true, .kind = COMP_KIND_IC,
+        .has_orientation = true,
+    };
+    const component_desc_t mount = {
+        .x = 20.5f, .y = 10.0f, .half_w = 1.0f, .half_h = 1.0f,
+        .locked = true, .kind = COMP_KIND_MECHANICAL,
+        .has_orientation = true,
+    };
+    const component_desc_t connector = {
+        .x = 35.0f, .y = 20.0f, .half_w = 1.0f, .half_h = 0.5f,
+        .locked = true, .kind = COMP_KIND_CONNECTOR,
+        .has_orientation = true,
+    };
+    CHECK(placer_add_component(ctx, &sot) != PLACE_ID_NONE);
+    CHECK(placer_add_component(ctx, &mount) != PLACE_ID_NONE);
+    CHECK(placer_add_component(ctx, &connector) != PLACE_ID_NONE);
+
+    const pin_desc_t pins[HOLE_COUNT] = {
+        {.comp = HOLE_SOT, .flags_valid = true, .flags = 0},
+        {.comp = HOLE_MOUNT, .flags_valid = true, .flags = hole_flag},
+        {.comp = HOLE_CONNECTOR, .flags_valid = true, .flags = PIN_PTH},
+    };
+    for (uint32_t i = 0u; i < HOLE_COUNT; ++i) {
+        CHECK(placer_add_pin(ctx, &pins[i]) != PLACE_ID_NONE);
+    }
+    const place_id_t net[HOLE_COUNT] = {HOLE_SOT, HOLE_MOUNT, HOLE_CONNECTOR};
+    add_net(ctx, net, HOLE_COUNT);
+
+    return placer_context_finalize(ctx);
+}
+
+/*
+ * The mounting hole H3 on r10 carries no copper and no net, so the engine used
+ * to read it as a part of one layer, let a bottom-side SOT land on it, and
+ * KiCad reported the result as a solder_mask_bridge, a hole_clearance and a
+ * copper_edge_clearance at once. A hole - plated or not - crosses every layer.
+ */
+static void test_a_non_plated_hole_spans_both_sides(void)
+{
+    solver_options_t opt;
+    solver_options_defaults(&opt);
+    /* Nothing may move: this is about what the engine sees in the input. */
+    opt.enable_global = false;
+    opt.enable_refine = false;
+    opt.enable_legalize = false;
+    opt.enable_matching = false;
+
+    placement_entry_t out[HOLE_COUNT];
+    solver_stats_t stats;
+
+    placer_context_t ctx;
+    CHECK(build_hole_scene(&ctx, PIN_NPTH));
+    CHECK(placer_solve(&ctx, &opt, out, HOLE_COUNT, &stats));
+    CHECK(stats.unplaced_before == 1u);
+    placer_context_destroy(&ctx);
+
+    /* Same geometry, no hole flag on the mounting pad: the far side of the
+     * hole looks free, which is the regression this test exists to catch. */
+    CHECK(build_hole_scene(&ctx, 0));
+    CHECK(placer_solve(&ctx, &opt, out, HOLE_COUNT, &stats));
+    CHECK(stats.unplaced_before == 0u);
+    placer_context_destroy(&ctx);
+}
+
 int main(void)
 {
     test_defaults_are_sane();
@@ -410,6 +510,7 @@ int main(void)
     test_refuses_a_scene_that_is_not_finalised();
     test_raster_mask_finds_the_free_cavities();
     test_the_solver_leaves_no_trace_in_the_scratch();
+    test_a_non_plated_hole_spans_both_sides();
 
     if (g_failures == 0) {
         (void)printf("test_solver: all checks passed\n");

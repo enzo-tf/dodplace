@@ -176,6 +176,7 @@ static void print_bench(const placer_context_t *ctx, const solver_stats_t *st,
     (void)printf("\nbench (seconds):\n");
     (void)printf("  load        %7.3f\n", seconds_load);
     (void)printf("  cluster     %7.3f\n", (double)st->seconds_cluster);
+    (void)printf("  incumbent   %7.3f\n", (double)st->seconds_incumbent);
     (void)printf("  global      %7.3f\n", (double)st->seconds_global);
     (void)printf("  refine      %7.3f\n", (double)st->seconds_refine);
     (void)printf("  legalize    %7.3f\n", (double)st->seconds_legalize);

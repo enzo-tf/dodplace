@@ -129,6 +129,23 @@ The first payload starts at `align64(128 + 32 * section_count)`.
 Sections with a count of zero are omitted by the writer and not required by the
 reader.
 
+### Pin flags (`PIN_FLAGS`, kind 14)
+
+| Bit | Value | Meaning |
+|---:|---:|---|
+| 0 | `0x01` | power rail |
+| 1 | `0x02` | ground |
+| 2, 3 | `0x04`, `0x08` | differential pair P / N |
+| 4 | `0x10` | clock |
+| 5 | `0x20` | plated through hole: copper on both faces |
+| 6 | `0x40` | non-plated hole: no copper, but the drill and its mask opening cross every layer |
+| 7 | `0x80` | the electrical role came from name inference, not from authoritative data |
+
+Bit 6 is additive and was added after the first release. A consumer that ignores
+it treats a mounting hole as a one-sided part and can put copper on top of it
+from the far side, which KiCad reports as `solder_mask_bridge`,
+`hole_clearance` and `copper_edge_clearance` in the same breath.
+
 **Kind numbers are stable identifiers and are never renumbered.** `COMP_KIND` is
 41 although it sits with the other component sections in this table, because it
 was added after the first release: a new field continues the series rather than

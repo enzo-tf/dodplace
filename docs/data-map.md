@@ -205,7 +205,7 @@ record per component, **in component-index order**:
 
 ---
 
-## 4b. Inside `dodplace-solve` — the four stages
+## 4b. Inside `dodplace-solve` — the stages
 
 The engine reads a scene and writes a placement; it never mutates the scene.
 Every stage allocates from the scratch arena, and a stage that fails sets `ok`
@@ -216,9 +216,18 @@ solver entirely and echoes the input.
 | Stage | File | What it does |
 |---|---|---|
 | 1 clustering | `solver_cluster.c` | reads `comps.kind`: an IC plus the inductor and capacitor on its switching node become one rigid body; the largest part is the master, the others keep a frozen offset and orientation *relative* to it |
-| 2 global | `solver_global.c` | force-directed relaxation: every net pulls its pins to a star around their centroid, parts repel each other volumetrically, locked parts act as anchors |
-| 3 refine | `solver_refine.c` | simulated annealing over swaps and rotations, then a deterministic rotation sweep; a rotation that would not fit the board is refused |
-| 4 legalise | `solver_legal.c` | minimum-translation-vector push out of overlaps and keepouts, then spiral relocation for whatever still collides, clamped to the board |
+| 2 matching | `matching_plan.c` | assigns decoupling capacitors to the IC pin each one decouples: a discrete assignment, so no rectangle moves and the DRC cannot change |
+| 3 incumbent | `solver_best.c` | legalises the input as it arrived and keeps that pose as the incumbent: the pose every later stage has to beat on the engine's own cost |
+| 4 global | `solver_global.c` | force-directed relaxation: every net pulls its pins to a star around their centroid, parts repel each other volumetrically, locked parts act as anchors |
+| 5 refine | `solver_refine.c` | simulated annealing over swaps and rotations, then a deterministic rotation sweep; a rotation that would not fit the board is refused |
+| 6 legalise | `solver_legal.c` | minimum-translation-vector push out of overlaps and keepouts, then spiral relocation for whatever still collides, clamped to the board |
+
+Stage 3 is what stops a redraw of a board that did not need one. Measured on
+r10, the relaxation and the annealing cost 4.9 m of wirelength between them
+while the legalised input stays within 0.4 m of where the designer left it, so
+the incumbent wins and the transformed layout is discarded. On a board whose
+input is a rough draft the same comparison adopts the other candidate: the
+rule is "keep the better score", not "keep the input".
 
 Cost is HPWL + crossing count + overlap count, weighted by `solver_options_t`.
 Two uniform grids (parts, ratsnest segments) keep the pair work local; the
@@ -237,10 +246,11 @@ which the engine is not allowed to undo.
 | | |
 |---|---|
 | Configuration | the defaults: `--pad-clearance 0.50`, `--w-crossings 5.0`, `--polish-reach 0.20`, `--moves 4000` |
-| HPWL | **36 812.2 mm** (input 31 699.6; signals only 33 898, the rails are 2 987) |
+| HPWL | **31 344.5 mm** (input 31 699.6) — the incumbent, 355 mm better than the input and 5 468 mm better than the 36 812.2 mm the transformed pipeline reaches on the same scene |
 | Movable overlaps | **0** |
 | KiCad DRC | **0 courtyards_overlap · 0 shorting_items · 0 solder_mask_bridge** |
-| Time | 0.88 s (release) |
+| Moves applied to the board | 61 of 707 footprints |
+| Time | 0.92 s (release), of which 0.06 s is the incumbent |
 
 ```sh
 dodplace-solve r10.bin --solve --bench -o r10_placed.bin
@@ -249,10 +259,10 @@ uv run dodplace apply r10.kicad_pcb --scene r10.bin --placement r10_placed.bin \
 kicad-cli pcb drc -o drc.txt r10_placed.kicad_pcb      # 0 / 0 / 0
 ```
 
-**The 33 000 mm target is incompatible with DRC manufacturability under
-continuous micro-translation annealing**; the lever engaged is **discrete part
-swapping**. The evidence is three measured sweeps, kept as CSV evidence in
-`docs/calibration/`:
+**The 33 000 mm target is met, at 31 344.5 mm.** The lever is the incumbent
+(stage 3): the earlier 36 812.2 mm was not the cost of legality, it was the
+cost of redrawing a placement that was already good. Three sweeps, kept as CSV
+evidence in `docs/calibration/`, say the same thing from three directions:
 
 | Sweep | Result |
 |---|---|
@@ -260,6 +270,21 @@ swapping**. The evidence is three measured sweeps, kept as CSV evidence in
 | `--moves` 4 000 / 8 000 / 16 000 × 3 seeds (54 runs) | **inert**: identical wirelength, spread 0.0 mm across seeds |
 | `--pad-clearance` below 0.50 | breaks the DRC (9 rejections) and never gains wirelength |
 | Anchoring the lanes | −2 900 mm, but +5 shorts and +9 mask bridges |
+
+An inert knob is diagnostic: the stages were not optimising badly, they were
+exploring a landscape whose optimum was the pose they started from. The last
+row is the same finding as the incumbent, taken from the other end — pulling
+parts back towards the designer's coordinates gains the wirelength, and the
+short and bridge counters are what the copper model had to grow before the
+gain could be kept.
+
+Two geometry rules were needed before any of that could be trusted:
+
+* A drilled hole spans both sides. `PIN_NPTH` (bit 6 of `PIN_FLAGS`) marks a
+  non-plated hole, and the side filter in `shape.c` treats it exactly as it
+  treats copper on both faces. Without it a bottom-side SOT could be placed on
+  top of the mounting hole H3, which KiCad reports as a mask bridge, a
+  hole-clearance error and an edge-clearance error at once.
 
 ---
 

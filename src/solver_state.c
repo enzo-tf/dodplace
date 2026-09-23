@@ -87,6 +87,16 @@ coord_t solver_axis_pitch(coord_t *scratch, const coord_t *values, uint32_t coun
     return scratch[gaps / 2u];
 }
 
+void solver_load_input_pose(solver_t *s)
+{
+    const components_soa_t *comps = &s->ctx->comps;
+    for (uint32_t i = 0u; i < s->ncomp; ++i) {
+        s->x[i] = comps->x[i];
+        s->y[i] = comps->y[i];
+        s->orient[i] = (uint8_t)comp_orientation(comps->flags[i]);
+    }
+}
+
 bool solver_state_init(solver_t *s, const placer_context_t *ctx,
                               const solver_options_t *opt)
 {
@@ -137,12 +147,10 @@ bool solver_state_init(solver_t *s, const placer_context_t *ctx,
     }
 
     for (uint32_t i = 0u; i < s->ncomp; ++i) {
-        s->x[i] = ctx->comps.x[i];
-        s->y[i] = ctx->comps.y[i];
-        s->orient[i] = (uint8_t)comp_orientation(ctx->comps.flags[i]);
         s->side[i] = comp_on_bottom(ctx->comps.flags[i]) ? 1u : 0u;
         s->cluster_of[i] = SOLVER_NO_INDEX;
     }
+    solver_load_input_pose(s);
     /*
      * The anchor: where the designer put each part, and the box it may not
      * leave. The box is anisotropic because the two axes mean different things
@@ -237,12 +245,12 @@ bool solver_state_init(solver_t *s, const placer_context_t *ctx,
 
     {
         const pins_soa_t *pins = &ctx->pins;
-        s->has_pth = SOLVER_ALLOC(s, uint8_t, (s->ncomp > 0u) ? s->ncomp : 1u);
+        s->spans_sides = SOLVER_ALLOC(s, uint8_t, (s->ncomp > 0u) ? s->ncomp : 1u);
         bool any = false;
-        if (s->has_pth != nullptr) {
+        if (s->spans_sides != nullptr) {
             for (uint32_t p = 0u; p < pins->count; ++p) {
-                if ((pins->flags[p] & PIN_PTH) != 0u) {
-                    s->has_pth[pins->comp_id[p]] = 1u;
+                if ((pins->flags[p] & (PIN_PTH | PIN_NPTH)) != 0u) {
+                    s->spans_sides[pins->comp_id[p]] = 1u;
                     any = true;
                 }
             }
@@ -255,7 +263,7 @@ bool solver_state_init(solver_t *s, const placer_context_t *ctx,
                 break;
             }
         }
-        s->pth_known = any || !would_expect;
+        s->sides_known = any || !would_expect;
     }
 
     build_pin_tables(s);
@@ -369,4 +377,3 @@ bool solver_state_init(solver_t *s, const placer_context_t *ctx,
 /* ========================================================================= */
 /* Entry point                                                               */
 /* ========================================================================= */
-
