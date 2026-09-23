@@ -19,31 +19,28 @@
  * Dirichlet boundary conditions the whole layout settles against. Clusters move
  * as rigid bodies, so a converter's inductor and output capacitor travel with
  * its IC.
+ *
+ * The repulsion here is the pairwise model; `--global-model analytic` swaps it
+ * for the ePlace density field (solver_analytic.c), which is the same idea
+ * without the O(n^2) sum and with a global view of where the room is. Both
+ * share the attraction, the centring, the rigid bodies and the confinement.
  */
 #include "solver_internal.h"
+#include "global_forces.h"
+#include "solver_analytic.h"
 
 #include <math.h>
 
-static coord_t clamp_coord(coord_t v, coord_t lo, coord_t hi)
-{
-    if (v < lo) {
-        return lo;
-    }
-    if (v > hi) {
-        return hi;
-    }
-    return v;
-}
-
 void solver_global(solver_t *s)
 {
-    const netlist_csr_t *nets = &s->ctx->nets;
-    const pins_soa_t *pins = &s->ctx->pins;
-    const components_soa_t *comps = &s->ctx->comps;
-    const uint32_t npin = s->npin;
     const uint32_t ncomp = s->ncomp;
     const uint32_t iters = s->opt->global_iterations;
     if (iters == 0u || ncomp == 0u) {
+        return;
+    }
+
+    if (s->opt->global_model == GLOBAL_MODEL_ANALYTIC) {
+        (void)solver_global_analytic(s);
         return;
     }
 
@@ -67,57 +64,12 @@ void solver_global(solver_t *s)
 
     const coord_t board_w = s->board_max_x - s->board_min_x;
     const coord_t board_h = s->board_max_y - s->board_min_y;
-    const coord_t centre_x = (s->board_min_x + s->board_max_x) * 0.5f;
-    const coord_t centre_y = (s->board_min_y + s->board_max_y) * 0.5f;
     const coord_t max_move = 0.02f * sqrtf(board_w * board_w + board_h * board_h);
 
     for (uint32_t iter = 0u; iter < iters; ++iter) {
-        for (uint32_t i = 0u; i < ncomp; ++i) {
-            fx[i] = 0.0f;
-            fy[i] = 0.0f;
-            touched[i] = 0u;
-        }
-
-        /* --- attraction: pin -> net centroid ---------------------------- */
-        for (uint32_t n = 0u; n < nets->num_nets; ++n) {
-            const uint32_t begin = nets->net_offsets[n];
-            const uint32_t end = nets->net_offsets[n + 1u];
-            if (end - begin < 2u) {
-                continue;
-            }
-            coord_t cx = 0.0f;
-            coord_t cy = 0.0f;
-            for (uint32_t e = begin; e < end; ++e) {
-                const uint32_t pin = nets->net_to_pins[e];
-                const uint32_t comp = pins->comp_id[pin];
-                const uint32_t o = s->orient[comp];
-                cx += s->x[comp] + s->rot_dx[o * npin + pin];
-                cy += s->y[comp] + s->rot_dy[o * npin + pin];
-            }
-            const coord_t inv = 1.0f / (coord_t)(end - begin);
-            cx *= inv;
-            cy *= inv;
-
-            const coord_t k = s->opt->attraction * s->opt->net_weight_scale * nets->weights[n];
-            for (uint32_t e = begin; e < end; ++e) {
-                const uint32_t pin = nets->net_to_pins[e];
-                const uint32_t comp = pins->comp_id[pin];
-                const uint32_t o = s->orient[comp];
-                const coord_t px = s->x[comp] + s->rot_dx[o * npin + pin];
-                const coord_t py = s->y[comp] + s->rot_dy[o * npin + pin];
-                fx[comp] += k * (cx - px);
-                fy[comp] += k * (cy - py);
-                touched[comp] = 1u;
-            }
-        }
-
-        /* --- weak centring for parts the netlist does not reach --------- */
-        for (uint32_t i = 0u; i < ncomp; ++i) {
-            if (touched[i] == 0u && (comps->flags[i] & COMP_LOCKED) == 0u) {
-                fx[i] += 0.02f * (centre_x - s->x[i]);
-                fy[i] += 0.02f * (centre_y - s->y[i]);
-            }
-        }
+        global_reset_forces(s, fx, fy, touched);
+        global_attraction(s, fx, fy, touched);
+        global_centring(s, fx, fy, touched);
 
         /* --- repulsion: every pair, with the occupancy radius ----------- */
         for (uint32_t i = 0u; i < ncomp; ++i) {
@@ -146,26 +98,10 @@ void solver_global(solver_t *s)
             }
         }
 
-        /* --- clusters take the sum of their members' forces -------------- */
-        for (uint32_t cl = 0u; cl < s->nclusters; ++cl) {
-            const uint32_t master = s->cluster_master[cl];
-            for (uint32_t k = s->cluster_first[cl];
-                 k < s->cluster_first[cl] + s->cluster_count[cl]; ++k) {
-                const uint32_t slave = s->member_comp[k];
-                fx[master] += fx[slave];
-                fy[master] += fy[slave];
-            }
-        }
+        global_cluster_forces(s, fx, fy);
 
         /* --- integrate, scaled so the largest force moves max_move ------ */
-        coord_t max_f = 0.0f;
-        for (uint32_t i = 0u; i < ncomp; ++i) {
-            if (!solver_component_is_movable(s, i)) {
-                continue;
-            }
-            const coord_t f = sqrtf(fx[i] * fx[i] + fy[i] * fy[i]);
-            max_f = (f > max_f) ? f : max_f;
-        }
+        const coord_t max_f = global_max_force(s, fx, fy);
         if (max_f <= 0.0f) {
             break;
         }
@@ -187,23 +123,6 @@ void solver_global(solver_t *s)
             }
         }
 
-        /* --- confinement -------------------------------------------------- */
-        for (uint32_t i = 0u; i < ncomp; ++i) {
-            if (!solver_component_is_movable(s, i)) {
-                continue;
-            }
-            const uint32_t cl = s->cluster_of[i];
-            const uint32_t target = (cl == SOLVER_NO_INDEX) ? i : s->cluster_master[cl];
-            const coord_t px = clamp_coord(s->x[target], s->board_min_x + s->half_w[target],
-                                           s->board_max_x - s->half_w[target]);
-            const coord_t py = clamp_coord(s->y[target], s->board_min_y + s->half_h[target],
-                                           s->board_max_y - s->half_h[target]);
-            if (cl != SOLVER_NO_INDEX) {
-                solver_apply_cluster(s, cl, px, py);
-            } else {
-                s->x[target] = px;
-                s->y[target] = py;
-            }
-        }
+        global_confine(s);
     }
 }

@@ -15,6 +15,15 @@ void solver_options_defaults(solver_options_t *opt)
     }
     memset(opt, 0, sizeof *opt);
     opt->global_iterations = 400u;
+    /* The ePlace density model is the default: on r10 it produces the same
+     * placement as the pairwise repulsion, byte for byte, for 0.10 s instead of
+     * 0.29 s - and unlike the pairwise sum it does not get slower as the square
+     * of the part count. `--global-model repulsion` keeps the old model, which
+     * is what the calibrations in docs/calibration were measured with. */
+    opt->global_model = GLOBAL_MODEL_ANALYTIC;
+    opt->w_density = 1.0f;
+    opt->momentum = 0.9f;
+    opt->density_bins = 64u;
     opt->refine_moves = 4000u;
     /* Relative to the score, because the cost mixes millimetres and counts. */
     opt->anneal_t_start_ratio = 0.01f;

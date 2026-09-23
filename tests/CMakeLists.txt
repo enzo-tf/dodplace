@@ -18,3 +18,8 @@ add_executable(test_solver test_solver.c)
 target_link_libraries(test_solver PRIVATE place dodplace_flags)
 target_include_directories(test_solver PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME solver COMMAND test_solver)
+
+add_executable(test_analytic test_analytic.c)
+target_link_libraries(test_analytic PRIVATE place dodplace_flags)
+target_include_directories(test_analytic PRIVATE ${CMAKE_SOURCE_DIR}/src)
+add_test(NAME analytic COMMAND test_analytic)

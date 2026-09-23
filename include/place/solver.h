@@ -29,7 +29,27 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+/* How the global stage pushes parts apart. Explicit values: they are written
+ * into reports and compared by the harness. */
+typedef enum : uint8_t {
+    GLOBAL_MODEL_REPULSION = 0, /* pairwise 1/d^2 sum, O(n^2) per iteration */
+    GLOBAL_MODEL_ANALYTIC  = 1  /* ePlace density Poisson solve on a bin grid */
+} global_model_t;
+
 typedef struct {
+
+    coord_t attraction;           /* net pull strength (1.0) */
+    coord_t repulsion;            /* 0 = derived from the board area */
+    coord_t net_weight_scale;     /* multiplies the per-net weight (1.0) */
+
+    /* --- the global model ----------------------------------------------- */
+    /* How parts are pushed apart. `repulsion` is the original pairwise
+     * 1/d^2 sum, O(n^2) per iteration; `analytic` solves the ePlace density
+     * Poisson equation on a bin grid and costs a transform instead. */
+    global_model_t global_model;
+    coord_t w_density;            /* density force, relative to the net pull (1.0) */
+    coord_t momentum;            /* Nesterov look-ahead, 0 = plain descent (0.9) */
+    uint32_t density_bins;       /* bins per axis; power of two is enough (64) */
     /* --- effort --------------------------------------------------------- */
     uint32_t global_iterations;   /* force-directed relaxation steps (400) */
     uint32_t refine_moves;
@@ -57,10 +77,6 @@ typedef struct {
     coord_t max_slip_y;           /* mm; the row of a regular board is ~0.12 pitch */
     coord_t anchor_soft_scale;    /* 2.5, lanes granted to a part that arrived in conflict */
     coord_t thermal_min_power;    /* 0.3 W: below this a part is not a heat source */
-
-    coord_t attraction;           /* net pull strength (1.0) */
-    coord_t repulsion;            /* 0 = derived from the board area */
-    coord_t net_weight_scale;     /* multiplies the per-net weight (1.0) */
 
     /* --- discrete choices ----------------------------------------------- */
     uint32_t rotation_mask;       /* allowed orientations, bit o = o*90 degrees */

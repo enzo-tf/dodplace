@@ -218,7 +218,7 @@ solver entirely and echoes the input.
 | 1 clustering | `solver_cluster.c` | reads `comps.kind`: an IC plus the inductor and capacitor on its switching node become one rigid body; the largest part is the master, the others keep a frozen offset and orientation *relative* to it |
 | 2 matching | `matching_plan.c` | assigns decoupling capacitors to the IC pin each one decouples: a discrete assignment, so no rectangle moves and the DRC cannot change |
 | 3 incumbent | `solver_best.c` | legalises the input as it arrived and keeps that pose as the incumbent: the pose every later stage has to beat on the engine's own cost |
-| 4 global | `solver_global.c` | force-directed relaxation: every net pulls its pins to a star around their centroid, parts repel each other volumetrically, locked parts act as anchors |
+| 4 global | `solver_global.c`, `solver_analytic.c` | force-directed relaxation: every net pulls its pins to a star around their centroid, locked parts act as anchors, and the parts push each other apart by one of two models — a pairwise 1/d² sum, or (the default) the ePlace density field below |
 | 5 refine | `solver_refine.c` | simulated annealing over swaps and rotations, then a deterministic rotation sweep; a rotation that would not fit the board is refused |
 | 6 legalise | `solver_legal.c` | minimum-translation-vector push out of overlaps and keepouts, then spiral relocation for whatever still collides, clamped to the board |
 
@@ -251,7 +251,51 @@ which the engine is not allowed to undo.
 | Movable overlaps | **0** |
 | KiCad DRC | **0 courtyards_overlap · 0 shorting_items · 0 solder_mask_bridge**, and 0 clearance, 0 hole_clearance, 0 copper_edge_clearance |
 | Moves applied to the board | 194 of 707 footprints |
-| Time | 0.85 s (release), of which 0.06 s is the incumbent and 0.30 s is the relaxation that is thrown away |
+| Time | 0.70 s (release), of which 0.06 s is the incumbent and 0.10 s is the relaxation that is thrown away |
+
+### The two global models
+
+| | pairwise repulsion | analytic (default) |
+|---|---|---|
+| Cost per iteration | O(n²) part pairs | O(bins) + one DCT each way |
+| r10, 400 iterations | 0.29 s | 0.10 s |
+| r10 result | rejected by the gate either way: the placement written is byte-for-byte the same |
+
+Both models are candidate generators, and the score gate decides. On r10 neither
+beats the *annealed designer layout*, so neither is used — but the analytical
+one reaches the same verdict for a third of the cost, and unlike the pairwise
+sum its cost does not grow with the square of the part count. `--global-model
+repulsion` selects the old model, which is what the calibration sweeps in
+`docs/calibration/` were measured with.
+
+The analytical model cuts the board into a 64×64 bin grid, charges each bin with
+the share of its area the courtyards cover, and solves
+
+    div(grad phi) = -rho          (no-flux boundary)
+
+by DCT: the Laplacian is diagonal in the cosine basis, so the solve is one
+transform, one division by the eigenvalue and the inverse transform — no
+iteration and no convergence criterion. The force on a part is its area times
+`-grad phi` at its centre, which pushes it off the density peaks and towards the
+holes. A *uniform* density produces no force at all: the constant mode has
+eigenvalue zero and is dropped, which is also what fixes the potential's
+arbitrary constant. The step is Nesterov-style — forces evaluated at a
+look-ahead point, momentum retained, step length normalised by the largest force
+— and reads no clock and no random number.
+
+### Left for the next pass: silkscreen
+
+The r10 run leaves 7 `silk_over_copper` and 3 `silk_overlap` warnings (KiCad
+severity: warning; the DRC contract is about courtyard overlaps, shorts and mask
+bridges, and those are zero). They are *caused* by the moves — the input board
+has none — so they are fixable in principle by nudging the five parts involved.
+They are not fixable with a bounding box per footprint: that model reports **480**
+silk-vs-pad incidences on this board against **10** real warnings, and a proxy
+built on courtyard-vs-foreign-pad boxes is worse than useless — it flags 54
+incidences on the *clean input* and only 3 on the output. A silk pass therefore
+needs the silk primitives themselves (≈11 000 items on r10) in the IR, the same
+way the copper model needed pad extents; that is a change to the scene format
+and to the extractor, not a polish tweak.
 
 ```sh
 dodplace-solve r10.bin --solve --bench -o r10_placed.bin

@@ -54,6 +54,11 @@ static void print_usage(FILE *out, const char *argv0)
                   "\n"
                   "solver options:\n"
                   "      --seed N           random seed, default 1\n"
+                  "      --global-model M   repulsion (pairwise 1/d^2, default) or\n"
+                  "                         analytic (ePlace density field)\n"
+                  "      --w-density F      density force, relative to the net pull (1.0)\n"
+                  "      --momentum F       Nesterov look-ahead for the analytic model (0.9)\n"
+                  "      --density-bins N   bins per axis of the density grid (64)\n"
                   "      --iterations N     force-directed steps, default 400\n"
                   "      --moves N          annealing moves, default 4000\n"
                   "      --no-cluster       skip semantic clustering\n"
@@ -303,6 +308,41 @@ int main(int argc, char **argv)
         }
         if (strcmp(arg, "--no-cluster") == 0) {
             options.enable_clustering = false;
+            continue;
+        }
+        if (strcmp(arg, "--global-model") == 0) {
+            if (i + 1 >= argc) {
+                (void)fprintf(stderr, "error: --global-model needs a name\n");
+                return 2;
+            }
+            const char *name = argv[++i];
+            if (strcmp(name, "repulsion") == 0) {
+                options.global_model = GLOBAL_MODEL_REPULSION;
+            } else if (strcmp(name, "analytic") == 0) {
+                options.global_model = GLOBAL_MODEL_ANALYTIC;
+            } else {
+                (void)fprintf(stderr, "error: --global-model takes repulsion or analytic\n");
+                return 2;
+            }
+            continue;
+        }
+        if (strcmp(arg, "--w-density") == 0 || strcmp(arg, "--momentum") == 0 ||
+            strcmp(arg, "--density-bins") == 0) {
+            if (i + 1 >= argc) {
+                (void)fprintf(stderr, "error: %s needs a number\n", arg);
+                return 2;
+            }
+            const char *value = argv[++i];
+            if (strcmp(arg, "--density-bins") == 0) {
+                options.density_bins = (uint32_t)strtoul(value, nullptr, 10);
+            } else {
+                const coord_t number = (coord_t)atof(value);
+                if (strcmp(arg, "--w-density") == 0) {
+                    options.w_density = number;
+                } else {
+                    options.momentum = number;
+                }
+            }
             continue;
         }
         if (strcmp(arg, "--swap-prob") == 0 || strcmp(arg, "--swap-max-pins") == 0) {

@@ -86,6 +86,10 @@ add_library(place STATIC
     src/copper_test.c
     src/ratsnest.c
     src/crossings.c
+    src/dct.c
+    src/density_grid.c
+    src/density_solve.c
+    src/global_forces.c
     src/solver_union.c
     src/solver_state.c
     src/solver_bbox.c
@@ -101,6 +105,7 @@ add_library(place STATIC
     src/solver_cluster.c
     src/solver_best.c
     src/solver_global.c
+    src/solver_analytic.c
     src/solver_refine.c
     src/solver_legal.c
     src/legalize_keepout.c

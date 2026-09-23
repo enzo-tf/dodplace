@@ -187,6 +187,11 @@ static void test_defaults_are_sane(void)
     CHECK(opt.polish_reach == 0.20f);
     CHECK(opt.anneal_t_start_ratio == 0.01f);
     CHECK(opt.anneal_t_end_ratio == 1.0e-3f);
+    /* The reference placement is the same bytes either way on r10; the
+     * analytical model is the cheaper of the two, so it is the default. */
+    CHECK(opt.global_model == GLOBAL_MODEL_ANALYTIC);
+    CHECK(opt.density_bins == 64u);
+    CHECK(opt.momentum == 0.9f);
     CHECK(opt.seed != 0u);
     CHECK(opt.board_margin > 0.0f);
 }

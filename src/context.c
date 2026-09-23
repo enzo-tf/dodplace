@@ -264,7 +264,10 @@ size_t placer_context_estimate_scratch_bytes(const scene_counts_t *counts)
      * grid entries) and a bounded pair of spatial grids.
      */
     const size_t grid_budget = 64u * 1024u; /* both grids, cell count capped */
-    size_t bytes = PLACE_ARENA_SLACK_BYTES * 4u + grid_budget;
+    /* The analytic global stage holds a 64x64 density grid, its two cosine
+     * tables and its force vectors; the pairwise model needs nothing extra. */
+    const size_t density_budget = 192u * 1024u;
+    size_t bytes = PLACE_ARENA_SLACK_BYTES * 4u + grid_budget + density_budget;
     if (counts != nullptr) {
         bytes += ctx_estimate_array(sizeof(coord_t), (size_t)counts->num_pins * 4u) * 8u;
         bytes += ctx_estimate_array(sizeof(coord_t), (size_t)counts->num_pins) * 5u;
