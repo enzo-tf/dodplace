@@ -12,6 +12,8 @@
 #include "spatial_grid.h"
 
 #include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 uint32_t count_conflicts(solver_t *s, coord_t gap, uint32_t *locked_pairs,
                                 coord_t *depth_out)
@@ -93,6 +95,26 @@ uint32_t count_conflicts(solver_t *s, coord_t gap, uint32_t *locked_pairs,
     }
     if (depth_out != nullptr) {
         *depth_out = 0.0f; /* the caller adds it up */
+    }
+    /* The spatial index is an optimisation, and an optimisation that misses a
+     * pair would quietly legalise nothing. DODPLACE_BRUTE_CONFLICTS=1 re-counts
+     * the whole board with a full O(n^2) scan and speaks up only when the two
+     * disagree, which is the check that found the grid sound. */
+    if (getenv("DODPLACE_BRUTE_CONFLICTS") != nullptr) {
+        uint32_t brute = 0u;
+        for (uint32_t i = 0u; i < ncomp; ++i) {
+            for (uint32_t j = i + 1u; j < ncomp; ++j) {
+                if (shape_overlaps(s, i, j, gap)) {
+                    brute += 1u;
+                }
+            }
+        }
+        if (brute != overlaps + locked) {
+            (void)fprintf(stderr,
+                          "conflicts: the grid counted %u movable and %u locked, a full scan "
+                          "found %u\n",
+                          (unsigned)overlaps, (unsigned)locked, (unsigned)brute);
+        }
     }
     return overlaps;
 }

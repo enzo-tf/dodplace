@@ -20,19 +20,34 @@
 static void build_pin_tables(solver_t *s)
 {
     const pins_soa_t *pins = &s->ctx->pins;
+    const components_soa_t *comps = &s->ctx->comps;
     const coord_t *dx = pins->offset_x;
     const coord_t *dy = pins->offset_y;
     for (uint32_t i = 0u; i < s->npin; ++i) {
         const coord_t px = dx[i];
         const coord_t py = dy[i];
-        s->rot_dx[0u * PIN_STRIDE(s) + i] = px;
-        s->rot_dy[0u * PIN_STRIDE(s) + i] = py;
-        s->rot_dx[1u * PIN_STRIDE(s) + i] = -py; /* R(90) in KiCad's y-down frame */
-        s->rot_dy[1u * PIN_STRIDE(s) + i] = px;
-        s->rot_dx[2u * PIN_STRIDE(s) + i] = -px;
-        s->rot_dy[2u * PIN_STRIDE(s) + i] = -py;
-        s->rot_dx[3u * PIN_STRIDE(s) + i] = py;
-        s->rot_dy[3u * PIN_STRIDE(s) + i] = -px;
+        /* The table is indexed by the engine's orientation, and holds the offset
+         * for the pose KiCad draws at that index (solver_pose_orient). The pin's
+         * own arriving angle is what makes the two differ, and it is a property
+         * of the component, so the table can absorb it once. */
+        const uint8_t arrived = (uint8_t)comp_orientation(comps->flags[pins->comp_id[i]]);
+        for (uint8_t o = 0u; o < 4u; ++o) {
+            const uint8_t pose = (uint8_t)((2u * (uint32_t)arrived + 4u - (uint32_t)o) & 3u);
+            coord_t rx = px;
+            coord_t ry = py;
+            if (pose == 1u) {
+                rx = -py; /* R(90) in this engine's y-down frame */
+                ry = px;
+            } else if (pose == 2u) {
+                rx = -px;
+                ry = -py;
+            } else if (pose == 3u) {
+                rx = py;
+                ry = -px;
+            }
+            s->rot_dx[o * PIN_STRIDE(s) + i] = rx;
+            s->rot_dy[o * PIN_STRIDE(s) + i] = ry;
+        }
     }
 }
 

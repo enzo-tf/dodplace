@@ -68,14 +68,15 @@ bool copper_overlaps(const solver_t *s, uint32_t i, coord_t xi, coord_t yi, uint
         coord_t a_hi_x = 0.0f;
         coord_t a_lo_y = 0.0f;
         coord_t a_hi_y = 0.0f;
-        pad_box(s, pins, p, xi, yi, s->orient[i], margin, &a_lo_x, &a_hi_x, &a_lo_y, &a_hi_y);
+        pad_box(s, pins, p, xi, yi, solver_pose_orient(s, i), margin, &a_lo_x, &a_hi_x,
+                &a_lo_y, &a_hi_y);
         for (uint32_t q = j_begin; q < j_end; ++q) {
             coord_t b_lo_x = 0.0f;
             coord_t b_hi_x = 0.0f;
             coord_t b_lo_y = 0.0f;
             coord_t b_hi_y = 0.0f;
-            pad_box(s, pins, q, xj, yj, s->orient[j], margin, &b_lo_x, &b_hi_x, &b_lo_y,
-                    &b_hi_y);
+            pad_box(s, pins, q, xj, yj, solver_pose_orient(s, j), margin, &b_lo_x, &b_hi_x,
+                    &b_lo_y, &b_hi_y);
             if (a_lo_x < b_hi_x && b_lo_x < a_hi_x && a_lo_y < b_hi_y && b_lo_y < a_hi_y) {
                 return true;
             }

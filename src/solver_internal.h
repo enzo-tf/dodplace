@@ -188,6 +188,27 @@ static inline void *solver_alloc_block(solver_t *s, size_t bytes)
 
 /* --- helpers shared by the stages (solver.c) ----------------------------- */
 
+/*
+ * The orientation index a pose is *drawn* at, given the one the engine stores.
+ *
+ * KiCad turns a footprint the other way round: at file angle A a footprint's
+ * pads move by R(-A) in the y-down frame, while every rotation table in this
+ * engine is built for R(+A). A scene's pin offsets are written in the frame of
+ * the angle the part *arrived* at (the producer un-rotates by that angle, see
+ * pcbnew_extract.to_local), so a part the solver has turned away from its
+ * arriving pose has to be read with the mirrored index - otherwise every
+ * pad-level test reasons about a footprint that is not the one on the board.
+ * Courtyard tests are blind to it (a box mirrors onto itself), which is why it
+ * survived until the copper model met kicad-cli: on r10 it was eight clearance
+ * violations and four copper-to-edge ones, and 13 pads predicted on the wrong
+ * side of their own footprint.
+ */
+static inline uint8_t solver_pose_orient(const solver_t *s, uint32_t k)
+{
+    const uint8_t arrived = (uint8_t)comp_orientation(s->ctx->comps.flags[k]);
+    return (uint8_t)((2u * (uint32_t)arrived + 4u - (uint32_t)s->orient[k]) & 3u);
+}
+
 /* A pair of axis-aligned boxes is clear when they are apart on either axis. */
 static inline bool boxes_overlap(coord_t ax, coord_t ay, coord_t ahw, coord_t ahh, coord_t bx,
                                  coord_t by, coord_t bhw, coord_t bhh, coord_t gap)

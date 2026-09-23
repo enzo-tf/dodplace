@@ -222,12 +222,13 @@ solver entirely and echoes the input.
 | 5 refine | `solver_refine.c` | simulated annealing over swaps and rotations, then a deterministic rotation sweep; a rotation that would not fit the board is refused |
 | 6 legalise | `solver_legal.c` | minimum-translation-vector push out of overlaps and keepouts, then spiral relocation for whatever still collides, clamped to the board |
 
-Stage 3 is what stops a redraw of a board that did not need one. Measured on
-r10, the relaxation and the annealing cost 4.9 m of wirelength between them
-while the legalised input stays within 0.4 m of where the designer left it, so
-the incumbent wins and the transformed layout is discarded. On a board whose
-input is a rough draft the same comparison adopts the other candidate: the
-rule is "keep the better score", not "keep the input".
+Stage 3 is what stops a redraw of a board that did not need one, and stage 4
+holds to the same rule: a relaxation that cannot beat the pose it started from
+is rolled back before the discrete stages see it. Measured on r10, the
+force-directed pass turned 31.7 m of wirelength into 41.5 m unclamped, lost the
+comparison, and the annealer then improved the designer's own placement to
+29.8 m — which is the point: the rule is "keep the better score", not "keep the
+input" and not "keep the pipeline".
 
 Cost is HPWL + crossing count + overlap count, weighted by `solver_options_t`.
 Two uniform grids (parts, ratsnest segments) keep the pair work local; the
@@ -246,11 +247,11 @@ which the engine is not allowed to undo.
 | | |
 |---|---|
 | Configuration | the defaults: `--pad-clearance 0.50`, `--w-crossings 5.0`, `--polish-reach 0.20`, `--moves 4000` |
-| HPWL | **31 344.5 mm** (input 31 699.6) — the incumbent, 355 mm better than the input and 5 468 mm better than the 36 812.2 mm the transformed pipeline reaches on the same scene |
+| HPWL | **29 818.9 mm** (input 31 699.6) — 1 881 mm better than the input and 6 993 mm better than the certified 36 812.2 mm baseline |
 | Movable overlaps | **0** |
-| KiCad DRC | **0 courtyards_overlap · 0 shorting_items · 0 solder_mask_bridge** |
-| Moves applied to the board | 61 of 707 footprints |
-| Time | 0.92 s (release), of which 0.06 s is the incumbent |
+| KiCad DRC | **0 courtyards_overlap · 0 shorting_items · 0 solder_mask_bridge**, and 0 clearance, 0 hole_clearance, 0 copper_edge_clearance |
+| Moves applied to the board | 194 of 707 footprints |
+| Time | 0.85 s (release), of which 0.06 s is the incumbent and 0.30 s is the relaxation that is thrown away |
 
 ```sh
 dodplace-solve r10.bin --solve --bench -o r10_placed.bin
@@ -259,9 +260,12 @@ uv run dodplace apply r10.kicad_pcb --scene r10.bin --placement r10_placed.bin \
 kicad-cli pcb drc -o drc.txt r10_placed.kicad_pcb      # 0 / 0 / 0
 ```
 
-**The 33 000 mm target is met, at 31 344.5 mm.** The lever is the incumbent
-(stage 3): the earlier 36 812.2 mm was not the cost of legality, it was the
-cost of redrawing a placement that was already good. Three sweeps, kept as CSV
+**The 33 000 mm target is met with 3 181 mm to spare.** The levers are the
+incumbent (stage 3) and the geometry corrections below: the earlier 36 812.2 mm
+was not the cost of legality, it was the cost of redrawing a placement that was
+already good, and of a copper model that read rotated footprints the wrong way
+round, so the annealer could not be trusted with the moves that would have
+helped. Three sweeps, kept as CSV
 evidence in `docs/calibration/`, say the same thing from three directions:
 
 | Sweep | Result |
@@ -271,20 +275,36 @@ evidence in `docs/calibration/`, say the same thing from three directions:
 | `--pad-clearance` below 0.50 | breaks the DRC (9 rejections) and never gains wirelength |
 | Anchoring the lanes | −2 900 mm, but +5 shorts and +9 mask bridges |
 
-An inert knob is diagnostic: the stages were not optimising badly, they were
-exploring a landscape whose optimum was the pose they started from. The last
-row is the same finding as the incumbent, taken from the other end — pulling
-parts back towards the designer's coordinates gains the wirelength, and the
-short and bridge counters are what the copper model had to grow before the
-gain could be kept.
+An inert knob is diagnostic: with the copper model reading the board wrong, the
+annealer was exploring a landscape that did not match the one it was judging.
+The last row is the same finding from the other end — pulling parts back towards
+the designer's coordinates gains the wirelength, and the short and bridge
+counters are what the copper model had to fix before the gain could be kept.
 
-Two geometry rules were needed before any of that could be trusted:
+Three corrections were needed before any of it could be trusted:
 
 * A drilled hole spans both sides. `PIN_NPTH` (bit 6 of `PIN_FLAGS`) marks a
   non-plated hole, and the side filter in `shape.c` treats it exactly as it
   treats copper on both faces. Without it a bottom-side SOT could be placed on
   top of the mounting hole H3, which KiCad reports as a mask bridge, a
   hole-clearance error and an edge-clearance error at once.
+
+* KiCad turns a footprint the other way round. Measured against pcbnew, a pad
+  at `(+2, 0)` moves to `(0, -2)` for a +90° footprint angle, while the engine's
+  rotation tables were built for `R(+A)`. The scene's pin offsets are written in
+  the frame of the angle a part *arrived* at, so the two agree until the solver
+  turns a part, and then every pad-level test reasons about a footprint that is
+  not on the board: 13 pads of the r10 run were predicted on the wrong side of
+  their own footprint. The tables are now indexed by the pose KiCad draws
+  (`solver_pose_orient`), which is invisible until a part actually turns.
+
+* A stage that allocates must give the arena back. The pipeline legalises twice
+  — the incumbent, then its own result — and the arena is never rewound
+  mid-solve, so the second legalisation found no room, did nothing, and left the
+  caller reading the first call's statistics on a layout it had not touched:
+  46 courtyard overlaps in a run that reported zero. Each stage now starts from
+  the same mark, and `placer_solve` refuses to write a placement when a stage
+  failed.
 
 ---
 

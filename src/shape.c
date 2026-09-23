@@ -14,7 +14,7 @@ static void copper_box(const solver_t *s, uint32_t k, coord_t x, coord_t y, coor
     coord_t cy = s->copper_cy[k];
     coord_t hw = s->copper_hw[k];
     coord_t hh = s->copper_hh[k];
-    const uint8_t o = s->orient[k];
+    const uint8_t o = solver_pose_orient(s, k);
     if (o == 1u) {
         const coord_t t = cx;
         cx = -cy;

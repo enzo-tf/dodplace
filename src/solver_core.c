@@ -167,23 +167,35 @@ bool placer_solve(const placer_context_t *ctx, const solver_options_t *opt,
     /*
      * The incumbent. The input is a placement too - usually the one a human
      * signed off - so legalising it as it stands costs one pass and gives the
-     * pipeline something to beat. Everything below runs from the input again,
+     * pipeline something to beat. The pipeline then runs from the input again
      * and is adopted only if it scores better (solver_best.c).
      */
-    const uint64_t t_incumbent0 = now_ns();
     const bool transformed = opt->enable_global || opt->enable_refine;
     solver_best_t incumbent;
+    if (transformed && !solver_best_init(&s, &incumbent)) {
+        return out_of_scratch((placer_context_t *)ctx, mark, stats);
+    }
+    /*
+     * Every stage below allocates its working tables from the same arena, and
+     * nothing it allocates outlives the call. Rewinding to this mark before
+     * each one keeps a stage repeatable: the incumbent is legalised here and
+     * the pipeline legalises its own result later, and without the rewind the
+     * second legalisation found no room, did nothing, and left the caller
+     * reading the first call's statistics on a layout it had not touched.
+     */
+    const arena_mark_t stage_mark = arena_mark(&((placer_context_t *)ctx)->scratch);
+
+    const uint64_t t_incumbent0 = now_ns();
     if (transformed) {
-        if (!solver_best_init(&s, &incumbent)) {
-            return out_of_scratch((placer_context_t *)ctx, mark, stats);
+        if (opt->enable_matching) {
+            arena_rewind(&((placer_context_t *)ctx)->scratch, stage_mark);
+            (void)matching_assign_decoupling(&s);
         }
         /* The discrete assignment belongs to the incumbent: choosing which
          * capacitor fills which slot changes no rectangle, so it is the one
          * stage that can improve a layout the designer already signed off. */
-        if (opt->enable_matching) {
-            (void)matching_assign_decoupling(&s);
-        }
         if (opt->enable_legalize) {
+            arena_rewind(&((placer_context_t *)ctx)->scratch, stage_mark);
             solver_legalize(&s);
         }
         solver_best_take(&s, &incumbent);
@@ -195,6 +207,14 @@ bool placer_solve(const placer_context_t *ctx, const solver_options_t *opt,
 
     const uint64_t t_global0 = t_incumbent1;
     if (opt->enable_global) {
+        arena_rewind(&((placer_context_t *)ctx)->scratch, stage_mark);
+        /* The relaxation has to pay for itself. It is a redraw, and on a board
+         * that arrives well placed - r10 is one - it can end up worse than the
+         * pose it started from: measured, 31.7 m of wirelength became 41.5 m
+         * before the anchors were clamped, and the stages that follow inherit
+         * whatever it produced. So its result is scored against the pose it
+         * started from, and a relaxation that does not win is rolled back. */
+        const solver_cost_t anchored = solver_evaluate(&s);
         solver_global(&s);
         /* The relaxation is continuous and knows nothing of lanes; bring it
          * back inside them before anything else looks at the layout. */
@@ -203,8 +223,14 @@ bool placer_solve(const placer_context_t *ctx, const solver_options_t *opt,
                 solver_clamp_to_anchor(&s, i);
             }
         }
+        if (solver_evaluate(&s).score >= anchored.score) {
+            solver_load_input_pose(&s);
+            solver_sync_cluster_members(&s);
+            solver_rebuild_extents(&s);
+        }
     }
     if (opt->enable_matching) {
+        arena_rewind(&((placer_context_t *)ctx)->scratch, stage_mark);
         (void)matching_assign_decoupling(&s);
     }
     const uint64_t t_global1 = now_ns();
@@ -213,10 +239,14 @@ bool placer_solve(const placer_context_t *ctx, const solver_options_t *opt,
     }
     const uint64_t t_refine1 = now_ns();
     if (opt->enable_legalize) {
+        arena_rewind(&((placer_context_t *)ctx)->scratch, stage_mark);
         solver_legalize(&s);
     }
     if (transformed) {
         (void)solver_best_adopt(&s, &incumbent);
+    }
+    if (!s.ok) {
+        return out_of_scratch((placer_context_t *)ctx, mark, stats);
     }
     const uint64_t t_legal1 = now_ns();
 

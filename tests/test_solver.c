@@ -10,6 +10,7 @@
 #include "place/io.h"
 #include "place/solver.h"
 #include "raster_mask.h"
+#include "solver_state.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -177,8 +178,8 @@ static void test_defaults_are_sane(void)
     CHECK(opt.enable_global && opt.enable_refine && opt.enable_legalize);
     CHECK(opt.enable_matching); /* on by default once the overlap count was exact */
 
-    /* The reference configuration on r10 (HPWL 31 344.5 mm, 0 movable overlap,
-     * KiCad DRC 0/0/0 in 0.92 s). It is a contract, not a coincidence -
+    /* The reference configuration on r10 (HPWL 29 818.9 mm, 0 movable overlap,
+     * KiCad DRC 0/0/0 in 0.85 s). It is a contract, not a coincidence -
      * changing any of these silently invalidates the reference. */
     CHECK(opt.refine_moves == 4000u);
     CHECK(opt.w_crossings == 5.0f);
@@ -498,6 +499,94 @@ static void test_a_non_plated_hole_spans_both_sides(void)
     placer_context_destroy(&ctx);
 }
 
+/* ------------------------------------------------------------------------- */
+/* Which way a quarter turn goes                                             */
+/* ------------------------------------------------------------------------- */
+
+enum {
+    TURN_BODY = 0,     /* one pad at (+2, 0): an off-centre pose to track */
+    TURN_ANCHOR = 1,
+    TURN_COUNT = 2
+};
+
+static bool build_turn_scene(placer_context_t *ctx, coord_t arrived_deg)
+{
+    const scene_counts_t counts = {
+        .num_comps = TURN_COUNT,
+        .num_pins = TURN_COUNT,
+        .num_nets = 1u,
+        .num_net_entries = TURN_COUNT,
+        .num_polygons = 1u,
+        .num_vertices = 5u,
+    };
+    if (!placer_context_begin(ctx, &counts, nullptr)) {
+        return false;
+    }
+    const coord_t outline[10] = {0.0f, 0.0f, 40.0f, 0.0f, 40.0f, 30.0f, 0.0f, 30.0f, 0.0f, 0.0f};
+    CHECK(placer_add_polygon(ctx, POLY_KIND_BOARD_OUTLINE, outline, 5u, 0u) != PLACE_ID_NONE);
+
+    const component_desc_t body = {
+        .x = 10.0f, .y = 10.0f, .half_w = 3.0f, .half_h = 2.0f,
+        .kind = COMP_KIND_IC, .has_orientation = true, .orientation_deg = arrived_deg,
+    };
+    const component_desc_t anchor = {
+        .x = 30.0f, .y = 20.0f, .half_w = 1.0f, .half_h = 1.0f,
+        .locked = true, .kind = COMP_KIND_CONNECTOR, .has_orientation = true,
+    };
+    CHECK(placer_add_component(ctx, &body) != PLACE_ID_NONE);
+    CHECK(placer_add_component(ctx, &anchor) != PLACE_ID_NONE);
+
+    const pin_desc_t pins[TURN_COUNT] = {
+        {.comp = TURN_BODY, .offset_x = 2.0f, .offset_y = 0.0f, .flags_valid = true},
+        {.comp = TURN_ANCHOR, .offset_x = 0.0f, .offset_y = 0.0f, .flags_valid = true},
+    };
+    for (uint32_t i = 0u; i < TURN_COUNT; ++i) {
+        CHECK(placer_add_pin(ctx, &pins[i]) != PLACE_ID_NONE);
+    }
+    const place_id_t net[TURN_COUNT] = {TURN_BODY, TURN_ANCHOR};
+    add_net(ctx, net, TURN_COUNT);
+    return placer_context_finalize(ctx);
+}
+
+/*
+ * KiCad turns a footprint by the opposite quarter turn to this engine's
+ * rotation tables (measured against pcbnew: a pad at (+2, 0) goes to (0, -2)
+ * for +90, not to (0, +2)). The offset tables are therefore indexed by the
+ * pose KiCad would *draw* for an orientation index, not by the index itself.
+ * Leaving that out cost eight clearance violations and four copper-to-edge
+ * ones on r10, all of them on parts the annealer had turned.
+ */
+static void test_a_quarter_turn_follows_kicad(void)
+{
+    solver_options_t opt;
+    solver_options_defaults(&opt);
+    placer_context_t ctx;
+    solver_t s;
+
+    /* Arriving at 0 degrees: index 0 must reproduce the pose it came with, and
+     * index 1 must be the pose KiCad draws at +90 in its own convention. */
+    CHECK(build_turn_scene(&ctx, 0.0f));
+    memset(&s, 0, sizeof s); /* the tables live in the context's arena */
+    CHECK(solver_state_init(&s, &ctx, &opt));
+    CHECK_NEAR(s.rot_dx[0u * PIN_STRIDE(&s) + 0u], 2.0f, 1e-5);
+    CHECK_NEAR(s.rot_dy[0u * PIN_STRIDE(&s) + 0u], 0.0f, 1e-5);
+    CHECK_NEAR(s.rot_dx[1u * PIN_STRIDE(&s) + 0u], 0.0f, 1e-5);
+    CHECK_NEAR(s.rot_dy[1u * PIN_STRIDE(&s) + 0u], -2.0f, 1e-5);
+    placer_context_destroy(&ctx);
+
+    /* Arriving at 90 degrees: the same index is the pose the part already
+     * occupies, which is what makes the correction invisible until a part
+     * actually turns. */
+    CHECK(build_turn_scene(&ctx, 90.0f));
+    memset(&s, 0, sizeof s);
+    CHECK(solver_state_init(&s, &ctx, &opt));
+    CHECK_NEAR(s.rot_dx[1u * PIN_STRIDE(&s) + 0u], 0.0f, 1e-5);
+    CHECK_NEAR(s.rot_dy[1u * PIN_STRIDE(&s) + 0u], 2.0f, 1e-5);
+    CHECK_NEAR(s.rot_dx[0u * PIN_STRIDE(&s) + 0u], -2.0f, 1e-5);
+    CHECK_NEAR(s.rot_dy[0u * PIN_STRIDE(&s) + 0u], 0.0f, 1e-5);
+    placer_context_destroy(&ctx);
+}
+
 int main(void)
 {
     test_defaults_are_sane();
@@ -511,6 +600,7 @@ int main(void)
     test_raster_mask_finds_the_free_cavities();
     test_the_solver_leaves_no_trace_in_the_scratch();
     test_a_non_plated_hole_spans_both_sides();
+    test_a_quarter_turn_follows_kicad();
 
     if (g_failures == 0) {
         (void)printf("test_solver: all checks passed\n");
