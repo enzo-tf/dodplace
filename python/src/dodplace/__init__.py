@@ -3,4 +3,4 @@
 Pipeline:  KiCad board  ->  extract  ->  enrich  ->  scene.bin  ->  C solver
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0-dev"
