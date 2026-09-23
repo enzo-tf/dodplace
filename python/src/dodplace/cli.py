@@ -277,6 +277,25 @@ def cmd_apply(args: argparse.Namespace) -> int:
     except ApplyError as exc:
         return _fail(str(exc))
 
+    # Opt-in: the detection is exact and the micro-nudge resolves most of the
+    # warnings, but the guard is not yet complete - a footprint with no
+    # courtyard in the extract escapes the courtyard test - so the shipped path
+    # does not move anything for silk.
+    if args.silk_polish and updates:
+        from .kicad.silk import board_box, polish_silk, pose_footprints
+
+        posed = pose_footprints(doc, updates)
+        by_ref = {u.ref: u for u in updates}
+        result = polish_silk(posed, movable=set(by_ref), board=board_box(doc))
+        for move in result["moved"]:
+            update = by_ref[move["ref"]]
+            update.x += move["dx"]
+            update.y += move["dy"]
+            update.dx += move["dx"]
+            update.dy += move["dy"]
+        print(f"silk: {len(result['moved'])} footprint(s) nudged, "
+              f"hpwl {result['hpwl_before']} -> {result['hpwl_after']} mm")
+
     print(f"updates: {len(updates)} footprint(s) to move")
     if not updates:
         print("  nothing moved: the placement matches the board")
@@ -363,6 +382,9 @@ def build_parser() -> argparse.ArgumentParser:
                            help="write every component, not only the ones that moved")
     apply_cmd.add_argument("--check-drc", action="store_true",
                            help="run kicad-cli DRC on the result (slower)")
+    apply_cmd.add_argument("--silk-polish", action="store_true",
+                           help="nudge footprints to clear silkscreen warnings "
+                                "(experimental: the copper guard is incomplete)")
     apply_cmd.set_defaults(func=cmd_apply)
     solve.set_defaults(func=cmd_solve)
 

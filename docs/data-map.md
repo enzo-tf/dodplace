@@ -484,6 +484,24 @@ look-ahead point, momentum retained, step length normalised by the largest force
 
 ### Left for the next pass: silkscreen
 
+**Status, cycle 11.** The producer side is done (`extract.json` carries 19 308
+capsules on r10, schema-validated) and a detector plus a micro-nudge exist in
+`python/src/dodplace/kicad/silk.py` - exact capsule-vs-box and capsule-vs-capsule
+tests, a 0.05 mm grid up to 0.20 mm, and the three guards. Run on r10's final
+placement it takes `silk_overlap` from **6 to 1** and leaves
+`silk_over_copper` at 1 - and it *breaks the copper gate*: two courtyard
+overlaps, a short and a mask bridge appear. The reason is in the guard, not in
+the geometry: a footprint with no courtyard in the extract (a mounting hole, a
+connector) escapes the courtyard test, and the pass is therefore **opt-in**
+(`dodplace apply --silk-polish`) until the guard falls back to the pad bounding
+box the way the ingest does. The shipped path does not move anything for silk,
+and its board is byte-identical to the one measured at 26 766.1 mm with
+0 courtyard / 0 short / 0 bridge / 0 clearance / 0 hole / 0 edge.
+
+The engine-side design is unchanged and still the plan: kinds 45 (capsules) and
+46 (the component-to-silk CSR) in the IR, `silk_check.c` for the same two
+distance tests in C, and the nudge at the end of the legalise stage.
+
 The r10 run leaves 7 `silk_over_copper` and 3 `silk_overlap` warnings (KiCad
 severity: warning; the DRC contract is about courtyard overlaps, shorts and mask
 bridges, and those are zero). They are *caused* by the moves — the input board
