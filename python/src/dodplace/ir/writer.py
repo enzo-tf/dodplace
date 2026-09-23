@@ -149,6 +149,7 @@ class SceneBuilder:
         kind: int = 0,
         polygon_id: int = NO_ID,
         ref: str = "",
+        part_id: int = 0,
     ) -> int:
         col = self._columns
         comp = len(col["comps.x"])
@@ -160,6 +161,7 @@ class SceneBuilder:
         col["comps.mass"].append(float(mass))
         col["comps.flags"].append(int(flags))
         col["comps.kind"].append(int(kind))
+        col["comps.part_id"].append(int(part_id) & 0xFFFFFFFF)
         col["comps.pin_count"].append(0)
         col["comps.polygon_id"].append(int(polygon_id))
         self.refs.append(ref)

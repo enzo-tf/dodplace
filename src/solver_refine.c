@@ -17,6 +17,7 @@
  * basin, the sweep cleans it.
  */
 #include "solver_internal.h"
+#include "swap.h"
 
 #include <math.h>
 #include <string.h>
@@ -93,7 +94,16 @@ void solver_refine(solver_t *s)
 
     for (uint32_t move = 0u; move < s->opt->refine_moves; ++move) {
         const uint32_t comp = s->movable[solver_rand_below(s, s->nmovable)];
-        const bool do_rotate = can_rotate(s, comp) && solver_rand_unit(s) < 0.45f;
+        /* The swap draw is short-circuited when the probability is zero, so a
+         * run at --swap-prob 0 consumes the generator exactly as before and
+         * reproduces the Gold reference bit for bit. */
+        const bool want_swap = s->swap_bucket_count > 0u && s->opt->swap_prob > 0.0f &&
+                               solver_rand_unit(s) < s->opt->swap_prob;
+        const bool do_rotate =
+            !want_swap && can_rotate(s, comp) && solver_rand_unit(s) < 0.45f;
+        swap_move_t swap_move;
+        swap_move.a = SOLVER_NO_INDEX;
+        swap_move.b = SOLVER_NO_INDEX;
 
         coord_t saved_x = 0.0f;
         coord_t saved_y = 0.0f;
@@ -162,6 +172,9 @@ void solver_refine(solver_t *s)
             if (candidate.score < s->best_score) {
                 snapshot(s, candidate.score);
             }
+        } else if (swap_move.a != SOLVER_NO_INDEX) {
+            swap_undo(s, &swap_move);
+            s->stats.swaps_applied -= 1u;
         } else if (do_rotate) {
             s->orient[comp] = saved_orient;
             solver_rebuild_extents(s);

@@ -325,6 +325,7 @@ static bool alloc_scene_arrays(placer_context_t *ctx)
     ALLOC_ARR(cs->first_pin, place_id_t, c->num_comps);
     ALLOC_ARR(cs->pin_count, place_count_t, c->num_comps);
     ALLOC_ARR(cs->polygon_id, place_id_t, c->num_comps);
+    ALLOC_ARR(cs->part_id, uint32_t, c->num_comps);
     cs->count = 0u;
     cs->capacity = c->num_comps;
 

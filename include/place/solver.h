@@ -49,6 +49,8 @@ typedef struct {
     bool     exclude_plane_nets;  /* skip ground/power rails in HPWL and RUDY */
     coord_t w_decoupling;         /* 2.0, mm^2 a capacitor sits beyond its pin */
     coord_t w_diffpair;           /* 4.0, mm^2 of length mismatch on a pair */
+    coord_t swap_prob;            /* 0.15: share of moves that are part swaps */
+    uint32_t swap_max_pins;       /* 6: only parts this small can be swapped (0 = any) */
     coord_t pad_clearance;
     coord_t polish_reach;         /* 0.20, mm under which the mask polish acts */        /* 0.25, mm between two parts' copper */
     coord_t max_slip_x;           /* mm a part may leave its anchor; 0 = derive */
@@ -102,7 +104,8 @@ typedef struct {
     uint32_t unplaced_fixable;    /* ... of which the solver could still fix */
     uint32_t locked_overlaps;     /* true overlaps between two locked parts: not ours */
     uint32_t too_tall;
-    uint32_t polished;            /* micro-moves made to satisfy the mask rule */            /* parts taller than the ceiling, frozen in place */
+    uint32_t polished;
+    uint32_t swaps_applied;            /* micro-moves made to satisfy the mask rule */            /* parts taller than the ceiling, frozen in place */
     uint32_t clearance_violations;/* pairs closer than the courtyard clearance */
     size_t   scratch_needed;      /* set when the arena was too small */
     size_t   scratch_peak;        /* high-water mark of the scratch arena */

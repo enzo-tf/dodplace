@@ -86,6 +86,10 @@ bool io_build_expected_sections(const placer_context_t *ctx, const scene_counts_
                          (uint32_t)sizeof(coord_t), (void *)ctx->pins.half_y, "pin.half_y")) {
         return false;
     }
+    if (!io_add_optional(out, &n, max, SCENE_SECTION_PART_ID, c->num_comps,
+                         (uint32_t)sizeof(uint32_t), (void *)ctx->comps.part_id, "comp.part_id")) {
+        return false;
+    }
     EXPECT(SCENE_SECTION_PIN_OFFSET_X, c->num_pins, coord_t, ctx->pins.offset_x, "pin.offset_x");
     EXPECT(SCENE_SECTION_PIN_OFFSET_Y, c->num_pins, coord_t, ctx->pins.offset_y, "pin.offset_y");
     EXPECT(SCENE_SECTION_PIN_COMP_ID, c->num_pins, place_id_t, ctx->pins.comp_id, "pin.comp_id");
@@ -208,6 +212,7 @@ bool io_build_save_sections(const placer_context_t *ctx, io_save_t *out,
     ADD(SCENE_SECTION_COMP_PIN_COUNT, ncomp, ctx->comps.pin_count, place_count_t);
     ADD(SCENE_SECTION_COMP_POLYGON_ID, ncomp, ctx->comps.polygon_id, place_id_t);
     ADD(SCENE_SECTION_COMP_KIND, ncomp, ctx->comps.kind, comp_kind_t);
+    ADD(SCENE_SECTION_PART_ID, ncomp, ctx->comps.part_id, uint32_t);
 
     ADD(SCENE_SECTION_PIN_OFFSET_X, npin, ctx->pins.offset_x, coord_t);
     ADD(SCENE_SECTION_PIN_OFFSET_Y, npin, ctx->pins.offset_y, coord_t);

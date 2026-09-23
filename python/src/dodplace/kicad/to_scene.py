@@ -87,6 +87,22 @@ class IngestResult:
 _REF_PREFIX = __import__("re").compile(r"^([A-Za-z]+)")
 
 
+def _fnv1a(text: str) -> int:
+    """32-bit FNV-1a: the part's identity, stable across runs and machines."""
+    digest = 0x811C9DC5
+    for byte in text.encode("utf-8"):
+        digest = ((digest ^ byte) * 0x01000193) & 0xFFFFFFFF
+    return digest
+
+
+def part_id_of(comp: dict) -> int:
+    """The supplier part number, else the value; 0 means no identity to swap on."""
+    fields = comp.get("fields") or {}
+    key = fields.get("LCSC Part") or comp.get("value") or ""
+    key = str(key).strip()
+    return _fnv1a(key) if key else 0
+
+
 def _pad_half_extents(pad: dict) -> tuple[float, float]:
     """The pad's axis-aligned half extents in the footprint frame, in mm.
 
@@ -347,6 +363,7 @@ def build_scene(
             kind=kind_from_ref(ref),
             polygon_id=polygon_id,
             ref=ref,
+            part_id=part_id_of(comp),
         )
 
         for pad in comp.get("pads", []):

@@ -82,6 +82,13 @@ typedef struct {
     coord_t *copper_hw;
     coord_t *copper_hh;
 
+    /* Buckets of interchangeable parts: same shape, same face, same rotation
+     * freedom. CSR, built once at init (swap.h). */
+    uint32_t *swap_first;
+    uint32_t *swap_len;
+    uint32_t *swap_member;
+    uint32_t  swap_bucket_count;
+
     /* Nets that are rails rather than traces: ground and power, and anything
      * wider than max_net_degree. Built once at init. */
     uint8_t *net_plane;

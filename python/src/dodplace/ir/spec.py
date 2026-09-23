@@ -109,6 +109,10 @@ class Section(enum.IntEnum):
     PIN_HALF_X = 42
     PIN_HALF_Y = 43
 
+    # The part's identity, so the solver may exchange it with another instance
+    # of the same part. Hashed on the producer side; 0 = unknown, never swapped.
+    PART_ID = 44
+
     JSON_TAIL = 900
 
 
@@ -251,6 +255,9 @@ SECTION_DEFS: tuple[SectionDef, ...] = (
     # Emitted here to keep the components together; the kind number (41) is
     # deliberately not in this position.
     SectionDef(Section.COMP_KIND, "comps.kind", "u1", "comps"),
+    # Right after the kind: the C writer emits it there, and the two orders are
+    # the byte-for-byte contract the golden fixture checks.
+    SectionDef(Section.PART_ID, "comps.part_id", "<u4", "comps"),
     SectionDef(Section.PIN_OFFSET_X, "pins.offset_x", "<f4", "pins"),
     SectionDef(Section.PIN_OFFSET_Y, "pins.offset_y", "<f4", "pins"),
     SectionDef(Section.PIN_COMP_ID, "pins.comp_id", "<u4", "pins"),

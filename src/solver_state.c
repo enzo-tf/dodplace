@@ -9,6 +9,7 @@
 #include "solver_internal.h"
 #include "solver_state.h"
 #include "shape.h"
+#include "swap.h"
 #include "spatial_grid.h"
 #include "solver_bbox.h"
 
@@ -313,6 +314,10 @@ bool solver_state_init(solver_t *s, const placer_context_t *ctx,
             s->copper_hw[i] = (hi_x - lo_x) * 0.5f;
             s->copper_hh[i] = (hi_y - lo_y) * 0.5f;
         }
+    }
+
+    if (!swap_buckets_build(s)) {
+        return false;
     }
 
     /* Which nets are rails. A net is one when any of its pins is a declared

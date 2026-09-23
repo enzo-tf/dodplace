@@ -46,6 +46,12 @@ void solver_options_defaults(solver_options_t *opt)
     opt->exclude_plane_nets = false;
     opt->w_decoupling = 1.0f;
     opt->w_diffpair = 4.0f;
+    /* Part swapping: exchanging two identical parts cannot move a rectangle,
+     * so it is the one move that changes the netlist assignment at no
+     * geometric risk. Off for the 24-pin packages until the LED signal is
+     * measured on its own. */
+    opt->swap_prob = 0.15f;
+    opt->swap_max_pins = 6u;
     opt->pad_clearance = 0.5f;
     /* The mask rule sits a little outside the copper margin; 0.20 covers the
      * r10 pairs (0.646 and 0.650 mm) with margin to spare. */

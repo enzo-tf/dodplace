@@ -127,6 +127,7 @@ typedef struct {
     place_id_t    *first_pin;  /* CSR: first pin index of this component */
     place_count_t *pin_count;  /* pins owned by this component */
     place_id_t    *polygon_id; /* exact courtyard in polygon_pool, or NONE */
+    uint32_t      *part_id;    /* hashed supplier part number; 0 = unknown */
     uint32_t       count;
     uint32_t       capacity;
 } components_soa_t;

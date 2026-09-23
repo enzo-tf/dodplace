@@ -58,6 +58,8 @@ static void print_usage(FILE *out, const char *argv0)
                   "      --moves N          annealing moves, default 4000\n"
                   "      --no-cluster       skip semantic clustering\n"
                   "      --no-matching      skip the discrete decoupling assignment\n"
+                  "      --swap-prob F      share of moves that exchange identical parts (0.15)\n"
+                  "      --swap-max-pins N  only parts with at most this many pins (6)\n"
                   "      --pad-clearance MM copper-to-copper margin (default 0.5)\n"
                   "      --polish-reach MM  mask polish band above that margin (default 0.2)\n"
                   "      --w-crossings F    weight of the ratsnest crossing term (default 5.0)\n"
@@ -108,6 +110,8 @@ static void print_stats(const solver_stats_t *st)
     (void)printf("  too tall          %u frozen above the enclosure ceiling\n",
                  (unsigned)st->too_tall);
     (void)printf("  polished          %u mask micro-move(s)\n", (unsigned)st->polished);
+    (void)printf("  swaps             %u part exchange(s) accepted\n",
+                 (unsigned)st->swaps_applied);
 }
 
 static void print_degraded(uint32_t mask)
@@ -298,6 +302,19 @@ int main(int argc, char **argv)
         }
         if (strcmp(arg, "--no-cluster") == 0) {
             options.enable_clustering = false;
+            continue;
+        }
+        if (strcmp(arg, "--swap-prob") == 0 || strcmp(arg, "--swap-max-pins") == 0) {
+            if (i + 1 >= argc) {
+                (void)fprintf(stderr, "error: %s needs a number\n", arg);
+                return 2;
+            }
+            const char *value = argv[++i];
+            if (strcmp(arg, "--swap-prob") == 0) {
+                options.swap_prob = (coord_t)atof(value);
+            } else {
+                options.swap_max_pins = (uint32_t)strtoul(value, nullptr, 10);
+            }
             continue;
         }
         if (strcmp(arg, "--pad-clearance") == 0 || strcmp(arg, "--w-crossings") == 0 ||

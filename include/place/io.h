@@ -109,13 +109,19 @@ typedef enum : uint32_t {
     /* Added after the first release; section kinds are stable identifiers and
      * are never renumbered, so this one continues the series rather than
      * shifting every kind below it. */
-    SCENE_SECTION_COMP_KIND,        /* u8 */
+    SCENE_SECTION_COMP_KIND = 41,   /* u8 */
 
     /* The copper of each pad, as half extents in the footprint's frame. Zero
      * means the producer supplied nothing and the engine falls back to the pad
      * centre, so a scene written before these sections reads as it always did. */
-    SCENE_SECTION_PIN_HALF_X,       /* f32, num_pins */
-    SCENE_SECTION_PIN_HALF_Y,       /* f32, num_pins */
+    SCENE_SECTION_PIN_HALF_X = 42,  /* f32, num_pins */
+    SCENE_SECTION_PIN_HALF_Y = 43,  /* f32, num_pins */
+
+    /* The part's identity, so the solver may exchange it with another instance
+     * of the same part. Explicit values, all four: implicit numbering shifted
+     * the two kinds above the moment this one was inserted, and the Python
+     * side has always numbered them 42/43/44. */
+    SCENE_SECTION_PART_ID = 44,     /* u32, 0 = unknown */
 
     /* Human-readable names/metadata for reports and diffs. Ignored by C. */
     SCENE_SECTION_JSON_TAIL = 900,
