@@ -1,0 +1,146 @@
+#!/usr/bin/env python3
+"""dodplace KiCad action shim.
+
+GENERATED FILE - produced by `dodplace plugin install`, do not edit by hand.
+
+KiCad launches this with *its own* Python (3.9 on macOS), so it uses nothing
+but the standard library and deliberately old syntax. Its only job is to relay
+the call to the project's own interpreter, which has the dependencies, and to
+pass stdout/stderr back so KiCad can show them in its message panel.
+
+Absolute paths are baked in because a process started by KiCad from the Finder
+does not inherit a shell PATH.
+"""
+
+import os
+import subprocess
+import sys
+
+# --- baked in by the installer ---------------------------------------------
+REPO = "@@REPO@@"
+PYTHON = "@@PYTHON@@"
+UV = "@@UV@@"
+CONFIG = "@@CONFIG@@"
+FALLBACK_LOG = "@@FALLBACK_LOG@@"
+
+#: Base command: `-E` makes the child ignore PYTHON* environment variables, and
+#: the board is found over the KiCad IPC API.
+ARGS = ["-E", "-m", "dodplace", "plugin", "analyze", "--ipc"]
+
+#: Arguments a manifest action may append (KiCad passes `args` on the command
+#: line). Only these are forwarded: anything else KiCad adds is logged and
+#: dropped, so a future KiCad argument cannot break the call.
+FORWARDED_ARGS = ("--report-only", "--save", "--json", "--quiet")
+
+#: KiCad exports these for its own interpreter before launching an action. They
+#: describe KiCad's bundled Python 3.9 and are fatal for any other interpreter:
+#: our Python would look for its standard library inside KiCad's 3.9 tree and
+#: die with "ModuleNotFoundError: No module named 'encodings'". The child gets a
+#: clean environment instead.
+INHERITED_PYTHON_VARS = (
+    "PYTHONHOME",
+    "PYTHONPATH",
+    "PYTHONSTARTUP",
+    "PYTHONEXECUTABLE",
+    "PYTHONNOUSERSITE",
+    "VIRTUAL_ENV",
+)
+
+
+def child_environment(repo):
+    environment = dict(os.environ)
+    for name in INHERITED_PYTHON_VARS:
+        environment.pop(name, None)
+    environment["DODPLACE_PLUGIN_REPO"] = repo
+    return environment
+
+
+def _log(message):
+    """Report a shim-level failure: stderr for KiCad, and a file for later."""
+    sys.stderr.write("dodplace plugin: " + message + "\n")
+    try:
+        directory = os.path.dirname(FALLBACK_LOG)
+        if directory and not os.path.isdir(directory):
+            os.makedirs(directory)
+        with open(FALLBACK_LOG, "a") as handle:
+            handle.write("dodplace plugin: " + message + "\n")
+    except OSError:
+        pass
+
+
+def _configured_repo():
+    """Fallback discovery: one absolute path on the first line of CONFIG."""
+    try:
+        with open(CONFIG) as handle:
+            for line in handle:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    return line
+    except OSError:
+        pass
+    return None
+
+
+def _is_repo(path):
+    return bool(path) and os.path.isdir(os.path.join(path, "python"))
+
+
+def _command(repo):
+    python = os.path.join(repo, "python", ".venv", "bin", "python")
+    if os.path.isfile(python):
+        return [python] + ARGS
+    if UV and os.path.isfile(UV):
+        return [UV, "run", "--project", os.path.join(repo, "python")] + ARGS
+    return None
+
+
+def extra_args(argv):
+    """The forwarded subset of the command line KiCad built for us."""
+    forwarded = []
+    ignored = []
+    for argument in argv:
+        if argument in FORWARDED_ARGS:
+            forwarded.append(argument)
+        else:
+            ignored.append(argument)
+    if ignored:
+        _log("ignoring unexpected argument(s): " + " ".join(ignored))
+    return forwarded
+
+
+def main():
+    repo = REPO if _is_repo(REPO) else _configured_repo()
+    if not _is_repo(repo):
+        _log("no dodplace checkout found (baked path %r, config %r); "
+             "re-run `dodplace plugin install`" % (REPO, CONFIG))
+        return 1
+
+    command = _command(repo)
+    if command is not None:
+        command = command + extra_args(sys.argv[1:])
+    if command is None:
+        _log("neither %s nor %s exists; run `uv sync` in %s/python"
+             % (PYTHON, UV, repo))
+        return 1
+
+    try:
+        process = subprocess.run(
+            command,
+            cwd=repo,
+            env=child_environment(repo),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+    except OSError as exc:
+        _log("cannot start %s: %s" % (command[0], exc))
+        return 1
+
+    sys.stdout.write(process.stdout.decode("utf-8", "replace"))
+    sys.stderr.write(process.stderr.decode("utf-8", "replace"))
+    if process.returncode != 0:
+        _log("dodplace exited with %d" % process.returncode)
+    return process.returncode
+
+
+if __name__ == "__main__":
+    sys.exit(main())

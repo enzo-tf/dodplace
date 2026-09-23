@@ -1,0 +1,94 @@
+# dodplace user rules - copy to `extra.toml` (or `dodplace.toml`) next to your
+# board and it is picked up automatically by `dodplace ingest`.
+#
+# This file is the strongest source in the enrichment chain: it overrides the
+# parts file, the board, the datasheets and the STEP models. It is also the only
+# place for the hard constraints no catalogue can know (thermal envelopes,
+# decoupling targets, symmetry, keepouts, mechanical limits).
+#
+# Every key is optional. Anything you leave out keeps the documented fallback,
+# and the engine reports it as a degraded category in the enrichment report.
+
+[board]
+# both | top | bottom
+allowed_sides = "both"
+# No part taller than this above the board surface (mm). 0 = no z test.
+ceiling_height_mm = 25.0
+# Airflow direction; [0, 0] means isotropic dissipation.
+airflow = [1.0, 0.0]
+# false forbids vias under component courtyards.
+via_under_body_allowed = false
+# Margin used when a courtyard has to be derived from pad extents (mm).
+courtyard_margin_mm = 0.25
+
+[board.net_clearance]
+# Net -> clearance in mm. The net gets its own class, so the override never
+# leaks onto unrelated nets that share the default class.
+VCC = 0.4
+"VBUS*" = 0.5
+
+[board.net_class]
+# Glob -> net class name, resolved through KiCad's effective netclass.
+"USB*" = "HighSpeed"
+
+[board.class_clearance]
+# Class -> clearance in mm, overriding the board's own definition.
+HighSpeed = 0.25
+
+[[component]]
+# Per-component overrides. `ref` and `fpid` are GLOBS, so one block can cover a
+# family ("FID*", "Tuile_LED:*") and a later block refines a single part.
+# Later blocks win field by field.
+ref = "U1"
+height_mm = 1.2
+mass_g = 0.5
+# Authoritative machine orientation; without it the footprint rotation is used
+# and NO_ROTATION_DATA is reported.
+orientation_deg = 90
+rot_fixed = true
+locked = true
+# side = "bottom"
+# Pad number -> role: power, ground, clock, diff_p, diff_n or signal.
+pin_roles = { "8" = "power", "4" = "ground" }
+pin_currents = { "8" = 0.5, "4" = 0.5 }
+# Dissipated power: turns into a thermal constraint automatically.
+power_w = 0.35
+# r_theta_ja = 45.0
+# exclusion_radius_mm = 3.0
+
+[[thermal]]
+# Explicit thermal envelope, for a part whose power you do not want to guess.
+component = "R1"
+power_w = 0.1
+radius_mm = 2.0
+# r_theta_ja = 250.0
+
+[[decoupling]]
+# Pull the capacitor next to the IC pin. Without any [[decoupling]] row the
+# netlist heuristic pairs capacitors with the ICs sharing their power net.
+ic = "U1"
+cap = "C1"
+pin = "8"
+max_distance_mm = 4.0
+weight = 2.0
+
+[[symmetry]]
+# a and b must keep the relation: axis = "x" (mirror about a vertical axis),
+# "y" (horizontal) or "fixed" (preserve the exact relative pose).
+a = "R1"
+b = "R2"
+axis = "x"
+weight = 1.0
+
+[[diffpair]]
+# Nets matched by name are detected automatically; this pins an explicit pair
+# and its length-matching budget.
+p = "USB1_P"
+n = "USB1_N"
+max_skew_mm = 0.1
+
+[[keepout]]
+# Forbidden area, in board coordinates (mm). layer_mask is a copper layer
+# bitmask; 0 means every layer.
+layer_mask = 3
+polygon = [[40, 2], [48, 2], [48, 8], [40, 8]]

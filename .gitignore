@@ -1,0 +1,31 @@
+# Build artifacts
+build/
+cmake-build-*/
+*.o
+*.a
+compile_commands.json
+.cache/
+
+# Editors / IDEs
+.idea/
+.vscode/
+*.swp
+
+# macOS
+.DS_Store
+
+# CMake user-local overrides
+CMakeUserPresets.json
+
+# Enrichment cache (created next to the board by `dodplace ingest`)
+.dodplace/
+
+# Python (python/ uv project)
+python/.venv/
+python/dist/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.kicad_prl
+*.dSYM/
+scripts/tune_2*.csv.tmp

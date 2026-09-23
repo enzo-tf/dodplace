@@ -1,0 +1,11 @@
+# KiCad installs the contents of this file into the plugin's virtual
+# environment, and marks the plugin "ready" only when `pip install -r` succeeds.
+#
+# dodplace deliberately installs nothing here:
+#   * the plugin shim (main.py) uses the standard library only, so it runs on
+#     whatever interpreter KiCad provides;
+#   * the real dependencies (numpy, kicad-python, pdfplumber...) live in the
+#     project's own uv environment, which the shim invokes.
+#
+# The file must exist even though it is empty of packages: without it KiCad
+# fails the dependency job and never registers the action.

@@ -1,0 +1,46 @@
+# Datasheet extraction rules (shipped): applied to the text of a PDF page by page.
+#
+# One [[rule]] per part family. A rule applies to a component when any of its
+# matchers hits; every field pattern is then searched in the page text and the
+# first capture group is parsed as a number.
+#
+# Guidelines for writing patterns:
+#   * anchor on the *label* text, not on a value, and keep the gap short
+#     (`[^0-9]{0,12}`) so a pattern cannot jump across a table;
+#   * a pattern that does not match costs nothing - the field stays unresolved
+#     and the engine applies its documented fallback;
+#   * set `confidence` honestly: values below ~0.6 end up in the report as
+#     low-confidence so you can review them.
+#
+# Check a rule against a real document with:
+#   dodplace enrich datasheet part.pdf --ref U1 --mpn STM32F103C8T6 --rules .
+
+[[rule]]
+name = "stm32-f1"
+mpn_prefix = "STM32F1"
+
+[[rule.field]]
+name = "height_mm"
+pattern = "Package(?: height| thickness)[^0-9]{0,12}([0-9.]+)\\s*mm"
+confidence = 0.6
+
+[[rule.field]]
+name = "power_w"
+pattern = "Power dissipation[^0-9]{0,12}([0-9.]+)\\s*W"
+confidence = 0.5
+
+[[rule.field]]
+name = "r_theta_ja"
+pattern = "R(?:th)?\\s*J-?A[^0-9]{0,12}([0-9.]+)"
+confidence = 0.5
+
+# A rule can also match a value printed on the part or a footprint family
+# instead of a manufacturer part number:
+#
+# [[rule]]
+# name = "0603-ceramic"
+# fpid_prefix = "Capacitor_SMD:C_0603"
+# [[rule.field]]
+# name = "height_mm"
+# pattern = "Thickness[^0-9]{0,10}([0-9.]+)\\s*mm"
+# confidence = 0.7

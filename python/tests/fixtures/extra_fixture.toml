@@ -1,0 +1,47 @@
+# Enrichment fixture: the kind of thing a user writes by hand.
+# It carries exactly what no catalogue and no datasheet can know: the mechanical
+# and electrical constraints of *this* board.
+
+[board]
+ceiling_height_mm = 20.0
+airflow = [1.0, 0.0]
+via_under_body_allowed = false
+courtyard_margin_mm = 0.3
+
+[board.net_clearance]        # puts the net in its own class with this clearance
+VCC = 0.4
+
+[board.net_class]            # glob -> class name
+"USB*" = "HighSpeed"
+
+[board.class_clearance]      # class -> mm, overrides the board's definition
+HighSpeed = 0.25
+
+[[component]]
+ref = "U1"
+orientation_deg = 90
+rot_fixed = true
+power_w = 0.35
+pin_roles = { "4" = "ground", "8" = "power" }
+pin_currents = { "4" = 0.5, "8" = 0.5 }
+
+[[thermal]]
+component = "R1"
+power_w = 0.1
+radius_mm = 2.0
+
+[[decoupling]]
+ic = "U1"
+cap = "C1"
+pin = "8"
+max_distance_mm = 4.0
+weight = 2.0
+
+[[symmetry]]
+a = "R1"
+b = "R2"
+axis = "x"
+
+[[keepout]]
+layer_mask = 3
+polygon = [[40, 2], [48, 2], [48, 8], [40, 8]]

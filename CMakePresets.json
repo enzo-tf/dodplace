@@ -1,0 +1,65 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "gcc-debug",
+      "displayName": "GCC - Debug (ASan + UBSan)",
+      "description": "Strict C23, -Werror, sanitizers enabled.",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/gcc-debug",
+      "toolchainFile": "${sourceDir}/cmake/toolchain-gcc.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "DODPLACE_WERROR": "ON",
+        "DODPLACE_SANITIZE": "ON",
+        "DODPLACE_ANALYZE": "OFF"
+      }
+    },
+    {
+      "name": "gcc-release",
+      "displayName": "GCC - Release",
+      "description": "Optimized build, no sanitizers.",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/gcc-release",
+      "toolchainFile": "${sourceDir}/cmake/toolchain-gcc.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "DODPLACE_WERROR": "ON",
+        "DODPLACE_SANITIZE": "OFF",
+        "DODPLACE_ANALYZE": "OFF"
+      }
+    },
+    {
+      "name": "gcc-analyze",
+      "displayName": "GCC - Debug + -fanalyzer",
+      "description": "Static inter-procedural analysis passes on top of the Debug build.",
+      "inherits": "gcc-debug",
+      "binaryDir": "${sourceDir}/build/gcc-analyze",
+      "cacheVariables": {
+        "DODPLACE_ANALYZE": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "gcc-debug", "configurePreset": "gcc-debug" },
+    { "name": "gcc-release", "configurePreset": "gcc-release" },
+    { "name": "gcc-analyze", "configurePreset": "gcc-analyze" }
+  ],
+  "testPresets": [
+    {
+      "name": "gcc-debug",
+      "configurePreset": "gcc-debug",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "gcc-release",
+      "configurePreset": "gcc-release",
+      "output": { "outputOnFailure": true }
+    }
+  ]
+}

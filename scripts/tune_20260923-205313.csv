@@ -1,0 +1,9 @@
+--anneal-t-end-ratio,--anneal-t-start-ratio,bridges,courtyards,engine_overlaps,hpwl,note,seconds,shorts,valid,wall_seconds
+0.001,0.005,-1,-1,-1,nan,the solver produced nothing,nan,-1,False,0.0
+0.001,0.01,-1,-1,-1,nan,the solver produced nothing,nan,-1,False,0.0
+0.001,0.02,-1,-1,-1,nan,the solver produced nothing,nan,-1,False,0.0
+0.001,0.05,-1,-1,-1,nan,the solver produced nothing,nan,-1,False,0.0
+0.0001,0.01,-1,-1,-1,nan,the solver produced nothing,nan,-1,False,0.0
+0.005,0.01,-1,-1,-1,nan,the solver produced nothing,nan,-1,False,0.0
+0.0001,0.005,-1,-1,-1,nan,the solver produced nothing,nan,-1,False,0.0
+0.005,0.05,-1,-1,-1,nan,the solver produced nothing,nan,-1,False,0.0
