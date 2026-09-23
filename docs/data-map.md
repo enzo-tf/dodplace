@@ -249,7 +249,55 @@ which the engine is not allowed to undo.
 | | |
 |---|---|
 | Configuration | the defaults: `--pad-clearance 0.50`, `--w-crossings 5.0`, `--polish-reach 0.20`, `--moves 32000`, `--restarts 16` |
-| HPWL | **26 793.4 mm** (input 31 699.6) — 4 906 mm better than the input and 10 019 mm better than the certified 36 812.2 mm baseline |
+| HPWL | **26 766.1 mm** (input 31 699.6) — 4 933 mm better than the input and 10 046 mm better than the certified 36 812.2 mm baseline |
+
+### The terminal quench, and what the acceptance rate was really saying
+
+Sixteen per cent acceptance in the last quartile looked like a walk that never
+freezes, and it sent the schedule back to the bench. It is not: the acceptance
+has two parts, and only one of them is the temperature's business.
+
+    accept = P(delta <= 0) + P(delta > 0) * exp(-delta / T)
+
+As T falls the second term vanishes and the first does not - a move that
+improves the score is accepted at any temperature. Splitting the counter says
+which is which, on a single walk of a million moves with the quench in place:
+
+| quarter | 1st | 2nd | 3rd | 4th |
+|---|---|---|---|---|
+| accepted, improving | - | - | - | 4 681 |
+| accepted, uphill | - | - | - | **0** |
+
+Every acceptance in the last quarter is an improving move: the thermal
+component is already zero, and "under 2 %" is unreachable for the total, because
+about one draw in eight genuinely improves the placement. What the directive
+asked for is therefore in place, and what changed is:
+
+  * `anneal_t_end_ratio` 1e-3 -> 1e-4, so the tail is cold rather than merely cool;
+  * `--quench N` (100 000 by default): the last N moves accept improvements only,
+    so the walk settles into the basin the exploration found instead of being
+    interrupted mid-stride by the end of the budget;
+  * the acceptance counters now report improving and uphill separately.
+
+### Chained annealing: implemented, measured, and not the answer
+
+`--chain N` reruns the walks from the placement the previous round settled on,
+with `T_start` and the neighbour radius multiplied by `--chain-decay` (0.25) each
+round - the basin is known, only its bottom is not. Measured over 5 000 000
+moves per chain:
+
+| configuration | HPWL | wall clock |
+|---|---|---|
+| 16 walks x 1 M, corrected profile | **26 766.1 mm** | 5 min 35 s |
+| chain 2 rounds x 2 walks x 2.5 M | 27 022.0 mm | 5 min 26 s |
+
+The chained run is worse, and the reason is visible in the numbers: with two
+walks the first round explores far less than sixteen, and a cold, radius-limited
+second round then refines a basin that is not worth refining. Depth in a single
+chain does not substitute for breadth in the round that finds the basin. The
+machinery stays - `--chain` is the tool for a board whose first round is
+expensive - but the default is one round, and 26 500 mm is not reached: the
+floor measured this cycle is **26 766.1 mm**.
 | Movable overlaps | **0** |
 | KiCad DRC | **0 courtyards_overlap · 0 shorting_items · 0 solder_mask_bridge**, and 0 clearance, 0 hole_clearance, 0 copper_edge_clearance |
 | Moves applied to the board | 208 of 707 footprints |

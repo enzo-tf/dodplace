@@ -29,6 +29,8 @@ typedef struct {
     uint32_t                moves_walled;
     uint32_t                swaps_applied;
     uint32_t                accept_q[4];
+    uint32_t                accept_down_q[4];
+    uint32_t                accept_up_q[4];
     bool                    ok;
 } restart_job_t;
 
@@ -84,6 +86,8 @@ static void *restart_worker(void *arg)
         job->swaps_applied = t.stats.swaps_applied;
         for (uint32_t q = 0u; q < 4u; ++q) {
             job->accept_q[q] = t.stats.accept_q[q];
+            job->accept_down_q[q] = t.stats.accept_down_q[q];
+            job->accept_up_q[q] = t.stats.accept_up_q[q];
         }
         memcpy(job->x, t.x, (size_t)job->ncomp * sizeof(coord_t));
         memcpy(job->y, t.y, (size_t)job->ncomp * sizeof(coord_t));
@@ -131,6 +135,8 @@ bool solver_restarts_parallel(solver_t *s, uint32_t restarts, uint32_t jobs)
     uint32_t win_moves_walled = 0u;
     uint32_t win_swaps_applied = 0u;
     uint32_t win_accept_q[4] = {0u, 0u, 0u, 0u};
+    uint32_t win_accept_down_q[4] = {0u, 0u, 0u, 0u};
+    uint32_t win_accept_up_q[4] = {0u, 0u, 0u, 0u};
     const uint32_t total = restarts;
     for (uint32_t first = 0u; first < total; first += jobs) {
         const uint32_t batch = ((total - first) < jobs) ? (total - first) : jobs;
@@ -179,6 +185,8 @@ bool solver_restarts_parallel(solver_t *s, uint32_t restarts, uint32_t jobs)
                 win_swaps_applied = slots[k].swaps_applied;
                 for (uint32_t q = 0u; q < 4u; ++q) {
                     win_accept_q[q] = slots[k].accept_q[q];
+                    win_accept_down_q[q] = slots[k].accept_down_q[q];
+                    win_accept_up_q[q] = slots[k].accept_up_q[q];
                 }
                 memcpy(win_x, slots[k].x, (size_t)n * sizeof(coord_t));
                 memcpy(win_y, slots[k].y, (size_t)n * sizeof(coord_t));
@@ -205,6 +213,8 @@ bool solver_restarts_parallel(solver_t *s, uint32_t restarts, uint32_t jobs)
     s->stats.swaps_applied = win_swaps_applied;
     for (uint32_t q = 0u; q < 4u; ++q) {
         s->stats.accept_q[q] = win_accept_q[q];
+        s->stats.accept_down_q[q] = win_accept_down_q[q];
+        s->stats.accept_up_q[q] = win_accept_up_q[q];
     }
     return s->ok;
 }

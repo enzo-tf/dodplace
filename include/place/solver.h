@@ -61,6 +61,10 @@ typedef struct {
     uint32_t refine_moves;
     coord_t  anneal_t_start_ratio; /* 0.01: start temperature, as a share of the score */
     coord_t  anneal_t_end_ratio;   /* 1e-3: end temperature, as a share of the start */        /* annealing moves (12000) */
+    uint32_t quench_moves;        /* 50000: the tail that accepts improvements only */
+    uint32_t chain_rounds;        /* 1: warm restarts, each from the previous best */
+    coord_t  chain_decay;         /* 0.25: T_start multiplier per chain round */
+    coord_t  refine_radius;       /* 0 = anywhere; mm a swap partner may be away */
     uint32_t refine_restarts;     /* 1: independent annealing walks, best kept */
     uint32_t jobs;                /* 1: walks run at once (one arena each) */
     uint32_t legalize_passes;
@@ -129,6 +133,12 @@ typedef struct {
     /* Metropolis acceptances per quarter of the walk, for the walk that ran
      * last: a budget spent without exploring shows up here first. */
     uint32_t accept_q[4];
+    /* The same split in two, because they answer different questions. An
+     * "improving" acceptance (delta <= 0) is the search working; a "thermal"
+     * one is the walk exploring uphill, and it is the only part a quench can
+     * take away. Sixteen per cent at the end is sixteen of the first kind. */
+    uint32_t accept_down_q[4];
+    uint32_t accept_up_q[4];
     uint32_t legalize_pushes;
     uint32_t unplaced_before;     /* true overlaps the solver had to fix, in the input */
     uint32_t unplaced;            /* courtyards still truly overlapping */

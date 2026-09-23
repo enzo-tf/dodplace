@@ -77,6 +77,8 @@ void solver_refine(solver_t *s)
     s->stats.movable = s->nmovable;
     for (uint32_t q = 0u; q < 4u; ++q) {
         s->stats.accept_q[q] = 0u;
+        s->stats.accept_down_q[q] = 0u;
+        s->stats.accept_up_q[q] = 0u;
     }
     if (s->nmovable == 0u) {
         return;
@@ -146,6 +148,17 @@ void solver_refine(solver_t *s)
             if (other == comp) {
                 continue;
             }
+            /* A warm round is a local search: the partner has to be in the
+             * neighbourhood, or the walk is exploring the board again instead
+             * of the basin it was handed. */
+            if (s->opt->refine_radius > 0.0f) {
+                const coord_t rdx = s->x[comp] - s->x[other];
+                const coord_t rdy = s->y[comp] - s->y[other];
+                if (rdx * rdx + rdy * rdy >
+                    s->opt->refine_radius * s->opt->refine_radius) {
+                    continue;
+                }
+            }
             saved_x = s->x[comp];
             saved_y = s->y[comp];
             const coord_t ox = s->x[other];
@@ -178,12 +191,22 @@ void solver_refine(solver_t *s)
         s->stats.moves_tried += 1u;
         const solver_cost_t candidate = solver_evaluate(s);
         const coord_t delta = candidate.score - current.score;
-        const bool accept = (delta <= 0.0f) ||
-                            (solver_rand_unit(s) < expf(-delta / temperature));
+        /* The quench: the last stretch of the walk takes improvements only, so
+         * it settles into the basin the exploration found instead of leaving
+         * the moment the budget ends. */
+        const bool quenching = (move + s->opt->quench_moves >= s->opt->refine_moves);
+        const bool accept =
+            (delta <= 0.0f) ||
+            (!quenching && solver_rand_unit(s) < expf(-delta / temperature));
         if (accept) {
             current = candidate;
             s->stats.moves_accepted += 1u;
             s->stats.accept_q[(move * 4u) / s->opt->refine_moves] += 1u;
+            if (delta <= 0.0f) {
+                s->stats.accept_down_q[(move * 4u) / s->opt->refine_moves] += 1u;
+            } else {
+                s->stats.accept_up_q[(move * 4u) / s->opt->refine_moves] += 1u;
+            }
             if (candidate.score < s->best_score) {
                 snapshot(s, candidate.score);
             }

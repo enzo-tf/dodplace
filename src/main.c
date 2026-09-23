@@ -69,6 +69,9 @@ static void print_usage(FILE *out, const char *argv0)
                   "      --swap-assign N    smallest bucket solved by assignment (6, 0 = off)\n"
                   "      --restarts N       independent annealing walks, best kept (1)\n"
                   "      --jobs N           walks run at once, one arena each (1)\n"
+                  "      --chain N          chained rounds, each from the previous best (1)\n"
+                  "      --chain-decay F    start temperature multiplier per round (0.25)\n"
+                  "      --quench N         tail moves that accept improvements only (50000)\n"
                   "      --pad-clearance MM copper-to-copper margin (default 0.5)\n"
                   "      --polish-reach MM  mask polish band above that margin (default 0.2)\n"
                   "      --w-crossings F    weight of the ratsnest crossing term (default 5.0)\n"
@@ -194,6 +197,12 @@ static void print_bench(const placer_context_t *ctx, const solver_stats_t *st,
     (void)printf("  accept/q    %u %u %u %u of %u moves\n", (unsigned)st->accept_q[0],
                  (unsigned)st->accept_q[1], (unsigned)st->accept_q[2],
                  (unsigned)st->accept_q[3], (unsigned)(st->moves_tried));
+    (void)printf("  accepted    %u improving, %u uphill (last quarter: %u / %u)\n",
+                 (unsigned)(st->accept_down_q[0] + st->accept_down_q[1] +
+                            st->accept_down_q[2] + st->accept_down_q[3]),
+                 (unsigned)(st->accept_up_q[0] + st->accept_up_q[1] + st->accept_up_q[2] +
+                            st->accept_up_q[3]),
+                 (unsigned)st->accept_down_q[3], (unsigned)st->accept_up_q[3]);
     (void)printf("  (cost calls %7.3f, %u evaluations)\n", (double)st->seconds_evaluate,
                  (unsigned)st->moves_tried);
     (void)printf("BENCH hpwl=%.1f hpwl_in=%.1f crossings=%u crossings_in=%u "
@@ -387,6 +396,30 @@ int main(int argc, char **argv)
                 return 2;
             }
             options.refine_restarts = (uint32_t)strtoul(argv[++i], nullptr, 10);
+            continue;
+        }
+        if (strcmp(arg, "--chain") == 0) {
+            if (i + 1 >= argc) {
+                (void)fprintf(stderr, "error: --chain needs a number\n");
+                return 2;
+            }
+            options.chain_rounds = (uint32_t)strtoul(argv[++i], nullptr, 10);
+            continue;
+        }
+        if (strcmp(arg, "--chain-decay") == 0) {
+            if (i + 1 >= argc) {
+                (void)fprintf(stderr, "error: --chain-decay needs a number\n");
+                return 2;
+            }
+            options.chain_decay = (coord_t)atof(argv[++i]);
+            continue;
+        }
+        if (strcmp(arg, "--quench") == 0) {
+            if (i + 1 >= argc) {
+                (void)fprintf(stderr, "error: --quench needs a number\n");
+                return 2;
+            }
+            options.quench_moves = (uint32_t)strtoul(argv[++i], nullptr, 10);
             continue;
         }
         if (strcmp(arg, "--jobs") == 0) {

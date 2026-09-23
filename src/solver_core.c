@@ -128,6 +128,15 @@ bool placer_solve(const placer_context_t *ctx, const solver_options_t *opt,
 
     solver_t s;
     memset(&s, 0, sizeof s);
+    /* The options are copied so a chained round can tighten its own start
+     * temperature and neighbour radius without touching the caller's struct. */
+    solver_options_t tuned;
+    if (opt != nullptr) {
+        tuned = *opt;
+    } else {
+        solver_options_defaults(&tuned);
+    }
+    opt = &tuned;
     if (!solver_state_init(&s, ctx, opt)) {
         return out_of_scratch((placer_context_t *)ctx, mark, stats);
     }
@@ -246,6 +255,8 @@ bool placer_solve(const placer_context_t *ctx, const solver_options_t *opt,
          * for bit: the first restart uses the seed itself.
          */
         const uint32_t restarts = (opt->refine_restarts > 0u) ? opt->refine_restarts : 1u;
+        const uint32_t rounds = (tuned.chain_rounds > 0u) ? tuned.chain_rounds : 1u;
+        const coord_t base_t_start = tuned.anneal_t_start_ratio;
         solver_best_t start;
         solver_best_t best;
         if (!solver_best_init(&s, &start) || !solver_best_init(&s, &best)) {
@@ -257,6 +268,19 @@ bool placer_solve(const placer_context_t *ctx, const solver_options_t *opt,
          * needs the room back: on r10 the parallel path left the arena three
          * hundred kilobytes tighter and the Hungarian matrices did not fit. */
         const arena_mark_t detail_mark = arena_mark(&((placer_context_t *)ctx)->scratch);
+        for (uint32_t round = 0u; round < rounds; ++round) {
+        if (round > 0u) {
+            /* Chained annealing: the next round starts from the placement the
+             * last one settled on, with a colder start and a tightened
+             * neighbourhood - the basin is known, only its bottom is not. */
+            tuned.anneal_t_start_ratio =
+                base_t_start * powf(tuned.chain_decay, (coord_t)round);
+            const coord_t base_radius =
+                (tuned.refine_radius > 0.0f) ? tuned.refine_radius : 8.0f;
+            tuned.refine_radius = base_radius * powf(tuned.chain_decay, (coord_t)round);
+            solver_best_take(&s, &start);
+            solver_best_take(&s, &best); /* this round keeps its own winner */
+        }
         /* Two or more workers: one arena each, nothing shared but the scene,
          * and the same ordering of the walks. */
         if (opt->jobs >= 2u && restarts >= 2u) {
@@ -284,6 +308,7 @@ bool placer_solve(const placer_context_t *ctx, const solver_options_t *opt,
                 }
             }
             solver_best_restore(&s, &best);
+        }
         }
         arena_rewind(&((placer_context_t *)ctx)->scratch, detail_mark);
         swap_detailed_stage(&s);

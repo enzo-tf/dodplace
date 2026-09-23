@@ -191,7 +191,7 @@ static void test_defaults_are_sane(void)
     CHECK(opt.enable_global && opt.enable_refine && opt.enable_legalize);
     CHECK(opt.enable_matching); /* on by default once the overlap count was exact */
 
-    /* The reference configuration on r10 (HPWL 26 793.4 mm, 0 movable overlap,
+    /* The reference configuration on r10 (HPWL 26 766.1 mm, 0 movable overlap,
      * KiCad DRC 0/0/0 in about a minute). It is a contract, not a coincidence -
      * changing any of these silently invalidates the reference. */
     CHECK(opt.refine_moves == 1000000u);
@@ -201,7 +201,10 @@ static void test_defaults_are_sane(void)
     CHECK(opt.pad_clearance == 0.5f);
     CHECK(opt.polish_reach == 0.20f);
     CHECK(opt.anneal_t_start_ratio == 0.01f);
-    CHECK(opt.anneal_t_end_ratio == 1.0e-3f);
+    CHECK(opt.anneal_t_end_ratio == 1.0e-4f);
+    CHECK(opt.quench_moves == 100000u);
+    CHECK(opt.chain_rounds == 1u);
+    CHECK(opt.chain_decay == 0.25f);
     /* The reference placement is the same bytes either way on r10; the
      * analytical model is the cheaper of the two, so it is the default. */
     CHECK(opt.global_model == GLOBAL_MODEL_ANALYTIC);

@@ -36,7 +36,14 @@ void solver_options_defaults(solver_options_t *opt)
     opt->jobs = 4u;
     /* Relative to the score, because the cost mixes millimetres and counts. */
     opt->anneal_t_start_ratio = 0.01f;
-    opt->anneal_t_end_ratio = 1e-3f;
+    /* The tail of the walk is a quench, not a slow cool: a ratio of 1e-3 still
+     * pays for uphill moves in the last quartile, while 1e-4 is cold enough
+     * that the terminal descent is what is left. */
+    opt->anneal_t_end_ratio = 1e-4f;
+    opt->quench_moves = 100000u;
+    opt->chain_rounds = 1u;
+    opt->chain_decay = 0.25f;
+    opt->refine_radius = 0.0f;
     opt->legalize_passes = 80u;
     opt->legalize_rounds = 12u;
 
