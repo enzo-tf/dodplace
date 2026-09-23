@@ -77,10 +77,76 @@ def layer_mask(boards_layerset):
     return mask
 
 
+def _arc_points(cx, cy, radius, a1_deg, a2_deg, steps=8):
+    """Chords of an arc, in the footprint's own frame."""
+    sweep = math.radians(a2_deg - a1_deg)
+    out = []
+    for i in range(steps + 1):
+        ang = math.radians(a1_deg) + sweep * i / steps
+        out.append((cx + radius * math.cos(ang), cy + radius * math.sin(ang)))
+    return out
+
+
+def _silk_segments(fp, ox, oy, degrees):
+    """Every silkscreen line of a footprint, as local-frame capsules."""
+    out = []
+    wanted = (pcbnew.F_SilkS, pcbnew.B_SilkS)
+    for item in fp.GraphicalItems():
+        try:
+            if item.GetLayer() not in wanted:
+                continue
+            width = mm(item.GetWidth())
+            shape = item.GetShape()
+            pts = []
+            if shape == pcbnew.SHAPE_T_SEGMENT:
+                pts = [(mm(item.GetStart().x), mm(item.GetStart().y)),
+                       (mm(item.GetEnd().x), mm(item.GetEnd().y))]
+            elif shape == pcbnew.SHAPE_T_RECT:
+                a = item.GetStart()
+                b = item.GetEnd()
+                x0, x1 = sorted((mm(a.x), mm(b.x)))
+                y0, y1 = sorted((mm(a.y), mm(b.y)))
+                pts = [(x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0)]
+            elif shape == pcbnew.SHAPE_T_CIRCLE:
+                c = item.GetCenter()
+                r = mm(item.GetRadius())
+                pts = _arc_points(mm(c.x), mm(c.y), r, 0.0, 360.0, steps=16)
+            elif shape == pcbnew.SHAPE_T_ARC:
+                c = item.GetCenter()
+                a1 = item.GetStartAngle().AsDegrees()
+                a2 = item.GetEndAngle().AsDegrees()
+                pts = _arc_points(mm(c.x), mm(c.y), mm(item.GetRadius()), a1, a2)
+            elif shape == pcbnew.SHAPE_T_POLY:
+                poly = item.GetPolyShape()
+                for ring in poly.Outline(0).CPoints():
+                    pts.append((mm(ring.x), mm(ring.y)))
+                if pts:
+                    pts.append(pts[0])
+            for p in range(len(pts) - 1):
+                (x1, y1), (x2, y2) = pts[p], pts[p + 1]
+                l1 = to_local(x1, y1, ox, oy, degrees)
+                l2 = to_local(x2, y2, ox, oy, degrees)
+                out.append((l1[0], l1[1], l2[0], l2[1], width * 0.5))
+        except Exception:  # noqa: BLE001 - a shape we cannot read is not fatal
+            continue
+    return out
+
+
 def extract_footprint(fp, errors):
+    """One footprint: geometry in the frame the engine rotates.
+
+    Silkscreen is flattened to segments here rather than in the engine: an arc
+    becomes a short chain of chords and a filled polygon its outline, so the
+    consumer needs one primitive - a capsule - to test against pads and against
+    other silk. The chords of an arc are within a few microns of the arc itself
+    at the widths a silkscreen uses, which is far below the 0.05 mm steps the
+    polish takes.
+    """
     origin = fp.GetPosition()
     ox, oy = mm(origin.x), mm(origin.y)
     degrees = fp.GetOrientationDegrees()
+
+    silk = _silk_segments(fp, ox, oy, degrees)
 
     cycles = []
     for layer in (pcbnew.F_CrtYd, pcbnew.B_CrtYd):
@@ -165,6 +231,7 @@ def extract_footprint(fp, errors):
         "locked": bool(fp.IsLocked()),
         "courtyard": [[list(point) for point in cycle] for cycle in cycles],
         "pads": pads,
+        "silk": silk,
         "fields": fields,
         "models": models,
     }

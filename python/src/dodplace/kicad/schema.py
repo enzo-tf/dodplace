@@ -84,6 +84,16 @@ def validate(doc: dict) -> None:
                 if not isinstance(pad.get(field), (int, float)):
                     raise ExtractError(f"component {comp['ref']} pad {pad.get('number')}: "
                                        f"{field} must be a number")
+        # Silkscreen, flattened to capsules in the footprint's own frame:
+        # (x1, y1, x2, y2, half_width). Optional - a producer may leave it out,
+        # and the engine then has no silk to check.
+        for seg in comp.get("silk", []):
+            if not isinstance(seg, list) or len(seg) != 5:
+                raise ExtractError(
+                    f"component {comp['ref']}: a silk segment is (x1, y1, x2, y2, half_width)"
+                )
+            if not all(isinstance(v, (int, float)) for v in seg):
+                raise ExtractError(f"component {comp['ref']}: silk coordinates must be numbers")
 
 
 def _check_cycle(cycle, where: str) -> None:

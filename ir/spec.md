@@ -124,10 +124,31 @@ The first payload starts at `align64(128 + 32 * section_count)`.
 | 39 | `CLEARANCE_MATRIX` | f32 | `num_net_classes²` (row-major) |
 | 40 | `BOARD_CONFIG` | struct | 1 (96 bytes, §7) |
 | 41 | `COMP_KIND` | u8 | `num_comps` |
+| 45 | `SILK_SEGMENT` | f32[5] | `num_silk` (reserved) |
+| 46 | `SILK_COMP_OFFSETS` | u32 | `num_comps + 1` (reserved) |
 | 900 | `JSON_TAIL` | u8 | byte length; free-form JSON, **ignored by the C reader** |
 
 Sections with a count of zero are omitted by the writer and not required by the
 reader.
+
+### Reserved: silkscreen (kinds 45-48)
+
+The producer now emits the silkscreen of every footprint in `extract.json`, as
+capsules in the footprint's own frame - `(x1, y1, x2, y2, half_width)` - with
+arcs flattened into chords and filled polygons reduced to their outlines. The
+scene sections that would carry them are specified here and **not yet written or
+read by the engine**, so that a scene stays exactly what it is today:
+
+| Kind | Payload | Meaning |
+|---:|---|---|
+| 45 | `f32[5]` per segment | `x1, y1, x2, y2, half_width`, footprint frame |
+| 46 | `u32[num_comps + 1]` | CSR from a component to its segments (kind 45) |
+| 47 | — | reserved: arcs kept as arcs |
+| 48 | — | reserved: polygons kept as polygons |
+
+The engine will need one primitive to test silk against pads and against other
+silk, and one is enough: an arc within a few microns is a chain of chords at
+silkscreen widths, and the resolution the polish works at is 0.05 mm.
 
 ### Pin flags (`PIN_FLAGS`, kind 14)
 
