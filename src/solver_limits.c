@@ -150,18 +150,24 @@ void solver_clamp_to_board(solver_t *s, uint32_t comp)
     const uint32_t cl = s->cluster_of[comp];
     const uint32_t target = (cl == SOLVER_NO_INDEX) ? comp : s->cluster_master[cl];
 
-    coord_t lo_x = s->x[target] - s->half_w[target];
-    coord_t hi_x = s->x[target] + s->half_w[target];
-    coord_t lo_y = s->y[target] - s->half_h[target];
-    coord_t hi_y = s->y[target] + s->half_h[target];
+    coord_t lo_x = 0.0f;
+    coord_t hi_x = 0.0f;
+    coord_t lo_y = 0.0f;
+    coord_t hi_y = 0.0f;
+    solver_copper_box(s, target, &lo_x, &hi_x, &lo_y, &hi_y);
     if (cl != SOLVER_NO_INDEX) {
         for (uint32_t k = s->cluster_first[cl];
              k < s->cluster_first[cl] + s->cluster_count[cl]; ++k) {
             const uint32_t m = s->member_comp[k];
-            lo_x = (s->x[m] - s->half_w[m] < lo_x) ? s->x[m] - s->half_w[m] : lo_x;
-            hi_x = (s->x[m] + s->half_w[m] > hi_x) ? s->x[m] + s->half_w[m] : hi_x;
-            lo_y = (s->y[m] - s->half_h[m] < lo_y) ? s->y[m] - s->half_h[m] : lo_y;
-            hi_y = (s->y[m] + s->half_h[m] > hi_y) ? s->y[m] + s->half_h[m] : hi_y;
+            coord_t m_lo_x = 0.0f;
+            coord_t m_hi_x = 0.0f;
+            coord_t m_lo_y = 0.0f;
+            coord_t m_hi_y = 0.0f;
+            solver_copper_box(s, m, &m_lo_x, &m_hi_x, &m_lo_y, &m_hi_y);
+            lo_x = (m_lo_x < lo_x) ? m_lo_x : lo_x;
+            hi_x = (m_hi_x > hi_x) ? m_hi_x : hi_x;
+            lo_y = (m_lo_y < lo_y) ? m_lo_y : lo_y;
+            hi_y = (m_hi_y > hi_y) ? m_hi_y : hi_y;
         }
     }
 
@@ -199,4 +205,3 @@ void solver_clamp_to_board(solver_t *s, uint32_t comp)
 /* ========================================================================= */
 /* Cost                                                                      */
 /* ========================================================================= */
-

@@ -32,9 +32,16 @@ static bool position_is_clean(const solver_t *s, uint32_t comp, coord_t x, coord
     if (!solver_within_anchor(s, comp, x, y)) {
         return false;
     }
-    /* Inside the board, with the part's own extents. */
-    if (x - s->half_w[comp] < s->board_min_x || x + s->half_w[comp] > s->board_max_x ||
-        y - s->half_h[comp] < s->board_min_y || y + s->half_h[comp] > s->board_max_y) {
+    /* Inside the board, with the part's own copper: a pad overhangs the
+     * courtyard, and a nudge that clears a mask bridge by pushing the pad over
+     * the edge is not a fix (thirteen of them on r10's deepest run). */
+    coord_t lo_x = 0.0f;
+    coord_t hi_x = 0.0f;
+    coord_t lo_y = 0.0f;
+    coord_t hi_y = 0.0f;
+    solver_copper_box_at(s, comp, x, y, &lo_x, &hi_x, &lo_y, &hi_y);
+    if (lo_x < s->board_min_x || hi_x > s->board_max_x || lo_y < s->board_min_y ||
+        hi_y > s->board_max_y) {
         return false;
     }
     for (uint32_t j = 0u; j < s->ncomp; ++j) {

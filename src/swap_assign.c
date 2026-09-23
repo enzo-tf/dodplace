@@ -4,8 +4,11 @@
 #include "swap_assign.h"
 #include "assign_hungarian.h"
 #include "solver_best.h"
+#include "wa_wirelength.h"
 
 #include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 typedef struct {
@@ -50,6 +53,46 @@ static coord_t assign_cost(const solver_t *s, uint32_t member, const assign_slot
     return total;
 }
 
+/* A pin's position if its component took `slot`. */
+static void pin_at(const solver_t *s, const assign_slot_t *slot, uint32_t pin, coord_t *px,
+                   coord_t *py)
+{
+    const uint32_t o = slot->orient;
+    *px = slot->x + s->rot_dx[o * (size_t)s->npin + pin];
+    *py = slot->y + s->rot_dy[o * (size_t)s->npin + pin];
+}
+
+/*
+ * The weighted-average cost of putting `member` in `slot`: for each of its
+ * pins, how much the soft length of that pin's net would change. The marginal
+ * is computed with every other pin held where it is - the standard
+ * one-at-a-time linearisation, which is what makes the cost a matrix at all -
+ * and the bucket's veto then checks the real thing.
+ */
+static coord_t assign_cost_wa(const solver_t *s, uint32_t member, const assign_slot_t *slot,
+                              const coord_t *wa_now)
+{
+    const netlist_csr_t *nets = &s->ctx->nets;
+    const pins_soa_t *pins = &s->ctx->pins;
+    const uint32_t begin = s->ctx->comps.first_pin[member];
+    const uint32_t end = begin + (uint32_t)s->ctx->comps.pin_count[member];
+    coord_t total = 0.0f;
+    for (uint32_t p = begin; p < end; ++p) {
+        const uint32_t net = pins->net_id[p];
+        if (net == PLACE_ID_NONE || net >= nets->num_nets) {
+            continue;
+        }
+        coord_t px = 0.0f;
+        coord_t py = 0.0f;
+        pin_at(s, slot, p, &px, &py);
+        const coord_t moved =
+            wa_net_length(s, net, p, px, py, s->opt->wa_gamma);
+        total += nets->weights[net] * (moved - wa_now[net]);
+    }
+    return total;
+}
+
+
 static void put_slot(solver_t *s, uint32_t comp, const assign_slot_t *slot)
 {
     s->x[comp] = slot->x;
@@ -81,6 +124,7 @@ bool swap_assign_pass(solver_t *s, uint32_t min_bucket)
     coord_t *pin_y = SOLVER_ALLOC(s, coord_t, npin);
     coord_t *net_sum_x = SOLVER_ALLOC(s, coord_t, nnet);
     coord_t *net_sum_y = SOLVER_ALLOC(s, coord_t, nnet);
+    coord_t *wa_now = SOLVER_ALLOC(s, coord_t, nnet);
     uint32_t *net_count = SOLVER_ALLOC(s, uint32_t, nnet);
     coord_t *cost = SOLVER_ALLOC(s, coord_t, (size_t)n * n);
     uint32_t *assign = SOLVER_ALLOC(s, uint32_t, n);
@@ -92,7 +136,8 @@ bool swap_assign_pass(solver_t *s, uint32_t min_bucket)
     uint8_t *used = SOLVER_ALLOC(s, uint8_t, n + 1u);
     assign_slot_t *slots = SOLVER_ALLOC(s, assign_slot_t, n);
     if (pin_x == nullptr || pin_y == nullptr || net_sum_x == nullptr || net_sum_y == nullptr ||
-        net_count == nullptr || cost == nullptr || assign == nullptr || u == nullptr ||
+        wa_now == nullptr || net_count == nullptr || cost == nullptr || assign == nullptr ||
+        u == nullptr ||
         v == nullptr || p == nullptr || way == nullptr || minv == nullptr || used == nullptr ||
         slots == nullptr) {
         return false;
@@ -102,6 +147,7 @@ bool swap_assign_pass(solver_t *s, uint32_t min_bucket)
         return false;
     }
     bool changed = false;
+    uint32_t vetoed = 0u;
     for (uint32_t b = 0u; b < s->swap_bucket_count; ++b) {
         const uint32_t len = s->swap_len[b];
         if (len < min_bucket) {
@@ -113,6 +159,7 @@ bool swap_assign_pass(solver_t *s, uint32_t min_bucket)
             net_sum_x[net] = 0.0f;
             net_sum_y[net] = 0.0f;
             net_count[net] = 0u;
+            wa_now[net] = wa_net_length(s, net, PLACE_ID_NONE, 0.0f, 0.0f, s->opt->wa_gamma);
         }
         for (uint32_t p_i = 0u; p_i < npin; ++p_i) {
             const uint32_t comp = s->ctx->pins.comp_id[p_i];
@@ -135,8 +182,11 @@ bool swap_assign_pass(solver_t *s, uint32_t min_bucket)
         for (uint32_t i = 0u; i < len; ++i) {
             const uint32_t m = s->swap_member[first + i];
             for (uint32_t j = 0u; j < len; ++j) {
-                cost[i * len + j] = assign_cost(s, m, &slots[j], net_sum_x, net_sum_y,
-                                                net_count, pin_x, pin_y);
+                cost[i * len + j] =
+                    (s->opt->assign_model == ASSIGN_MODEL_WA)
+                        ? assign_cost_wa(s, m, &slots[j], wa_now)
+                        : assign_cost(s, m, &slots[j], net_sum_x, net_sum_y, net_count,
+                                      pin_x, pin_y);
             }
         }
         assign_hungarian(cost, len, assign, u, v, p, way, minv, used);
@@ -153,9 +203,15 @@ bool swap_assign_pass(solver_t *s, uint32_t min_bucket)
         }
         /* The star model is not the cost the engine is judged by: keep the
          * permutation only if the real objective agreed. */
-        if (!solver_best_adopt(s, &keep)) {
+        if (solver_best_adopt(s, &keep)) {
+            vetoed += 1u;
+        } else {
             changed = true;
         }
+    }
+    if (getenv("DODPLACE_ASSIGN_DEBUG") != nullptr) {
+        (void)fprintf(stderr, "assign pass: %u bucket(s) rearranged, %u vetoed\n",
+                      (unsigned)(changed ? 1u : 0u), (unsigned)vetoed);
     }
     return changed;
 }

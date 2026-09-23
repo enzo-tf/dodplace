@@ -10,10 +10,22 @@
 void solver_union_extent(const solver_t *s, uint32_t comp, coord_t *lo_x, coord_t *lo_y,
                          coord_t *hi_x, coord_t *hi_y)
 {
-    *lo_x = -s->half_w[comp];
-    *hi_x = s->half_w[comp];
-    *lo_y = -s->half_h[comp];
-    *hi_y = s->half_h[comp];
+    /*
+     * The copper, not the courtyard. Every caller of this is asking "does the
+     * part fit where it is being put" - the slot search, the keepout mask, the
+     * matcher - and what has to fit is the metal: a footprint's pads overhang
+     * its courtyard, and on r10 the courtyard test let a driver's pad sit
+     * 0.315 mm from the board edge while the rule asks for 0.5.
+     */
+    coord_t cu_lo_x = 0.0f;
+    coord_t cu_hi_x = 0.0f;
+    coord_t cu_lo_y = 0.0f;
+    coord_t cu_hi_y = 0.0f;
+    solver_copper_box(s, comp, &cu_lo_x, &cu_hi_x, &cu_lo_y, &cu_hi_y);
+    *lo_x = cu_lo_x - s->x[comp];
+    *hi_x = cu_hi_x - s->x[comp];
+    *lo_y = cu_lo_y - s->y[comp];
+    *hi_y = cu_hi_y - s->y[comp];
     const uint32_t cl = s->cluster_of[comp];
     if (cl == SOLVER_NO_INDEX) {
         return;

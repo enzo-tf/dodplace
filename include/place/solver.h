@@ -36,6 +36,12 @@ typedef enum : uint8_t {
     GLOBAL_MODEL_ANALYTIC  = 1  /* ePlace density Poisson solve on a bin grid */
 } global_model_t;
 
+/* What prices a pairing in the detailed assignment matrix. */
+typedef enum : uint8_t {
+    ASSIGN_MODEL_STAR = 0, /* distance to the centroid of the other pins */
+    ASSIGN_MODEL_WA   = 1  /* weighted-average wirelength, as ePlace estimates it */
+} assign_model_t;
+
 typedef struct {
 
     coord_t attraction;           /* net pull strength (1.0) */
@@ -55,6 +61,7 @@ typedef struct {
     uint32_t refine_moves;
     coord_t  anneal_t_start_ratio; /* 0.01: start temperature, as a share of the score */
     coord_t  anneal_t_end_ratio;   /* 1e-3: end temperature, as a share of the start */        /* annealing moves (12000) */
+    uint32_t refine_restarts;     /* 1: independent annealing walks, best kept */
     uint32_t legalize_passes;
     uint32_t legalize_rounds;   /* slot-search rounds after the pushes settle */     /* push-out passes (80) */
 
@@ -73,6 +80,8 @@ typedef struct {
     uint32_t swap_max_pins;       /* 6: only parts this small can be swapped (0 = any) */
     uint32_t swap_window;         /* 5: parts per permutation window (0 = off, max 6) */
     uint32_t swap_assign_min;     /* 6: smallest bucket solved exactly (0 = off) */
+    assign_model_t assign_model;  /* WA: the matrix follows the ePlace estimate */
+    coord_t wa_gamma;             /* mm; WA smoothing, 1.0 */
     coord_t pad_clearance;
     coord_t polish_reach;         /* 0.20, mm under which the mask polish acts */        /* 0.25, mm between two parts' copper */
     coord_t max_slip_x;           /* mm a part may leave its anchor; 0 = derive */

@@ -116,6 +116,7 @@ add_library(place STATIC
     src/swap_detailed.c
     src/swap_window.c
     src/assign_hungarian.c
+    src/wa_wirelength.c
     src/lns_repair.c
     src/raster_mask.c
     src/matching_plan.c

@@ -190,6 +190,18 @@ static inline void *solver_alloc_block(solver_t *s, size_t bytes)
 
 /* --- helpers shared by the stages (solver.c) ----------------------------- */
 
+/* A part's copper at its current pose, in board coordinates. The courtyard is
+ * not the copper: a footprint's pads overhang it, and it is the pads that have
+ * to clear the board edge - r10's deep runs produced thirteen edge violations
+ * while the courtyards were all comfortably inside. */
+void solver_copper_box(const solver_t *s, uint32_t comp, coord_t *lo_x, coord_t *hi_x,
+                       coord_t *lo_y, coord_t *hi_y);
+
+/* The same box for a pose the part does not hold yet - what a candidate move
+ * has to be judged on. */
+void solver_copper_box_at(const solver_t *s, uint32_t comp, coord_t x, coord_t y,
+                          coord_t *lo_x, coord_t *hi_x, coord_t *lo_y, coord_t *hi_y);
+
 /*
  * The orientation index a pose is *drawn* at, given the one the engine stores.
  *

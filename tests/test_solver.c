@@ -163,6 +163,17 @@ static bool build_scene(placer_context_t *ctx, bool overlapping)
     return placer_context_finalize(ctx);
 }
 
+
+/* The suite exercises the stages, not the production search depth: the default
+ * is sixteen walks of thirty-two thousand moves, which is a minute on r10 and
+ * would make every check here pay for it. */
+static void light_options(solver_options_t *opt)
+{
+    solver_options_defaults(opt);
+    opt->refine_moves = 200u;
+    opt->refine_restarts = 1u;
+}
+
 static void test_defaults_are_sane(void)
 {
     solver_options_t opt;
@@ -178,10 +189,11 @@ static void test_defaults_are_sane(void)
     CHECK(opt.enable_global && opt.enable_refine && opt.enable_legalize);
     CHECK(opt.enable_matching); /* on by default once the overlap count was exact */
 
-    /* The reference configuration on r10 (HPWL 29 360.6 mm, 0 movable overlap,
-     * KiCad DRC 0/0/0 in 0.75 s). It is a contract, not a coincidence -
+    /* The reference configuration on r10 (HPWL 28 153.6 mm, 0 movable overlap,
+     * KiCad DRC 0/0/0 in about a minute). It is a contract, not a coincidence -
      * changing any of these silently invalidates the reference. */
-    CHECK(opt.refine_moves == 4000u);
+    CHECK(opt.refine_moves == 32000u);
+    CHECK(opt.refine_restarts == 16u);
     CHECK(opt.w_crossings == 5.0f);
     CHECK(opt.pad_clearance == 0.5f);
     CHECK(opt.polish_reach == 0.20f);
@@ -225,7 +237,9 @@ static void test_locked_parts_do_not_move(void)
     CHECK(build_scene(&ctx, false));
 
     placement_entry_t out[COMP_COUNT];
-    CHECK(placer_solve(&ctx, nullptr, out, COMP_COUNT, nullptr));
+    solver_options_t light;
+    light_options(&light);
+    CHECK(placer_solve(&ctx, &light, out, COMP_COUNT, nullptr));
     CHECK((out[COMP_J1].flags & PLACEMENT_FLAG_LOCKED) != 0u);
     CHECK_NEAR(out[COMP_J1].x, ctx.comps.x[COMP_J1], 1e-4);
     CHECK_NEAR(out[COMP_J1].y, ctx.comps.y[COMP_J1], 1e-4);
@@ -240,7 +254,9 @@ static void test_legalisation_separates_overlaps(void)
 
     placement_entry_t out[COMP_COUNT];
     solver_stats_t stats;
-    CHECK(placer_solve(&ctx, nullptr, out, COMP_COUNT, &stats));
+    solver_options_t light;
+    light_options(&light);
+    CHECK(placer_solve(&ctx, &light, out, COMP_COUNT, &stats));
     CHECK(stats.overlaps_before > 0u);
     CHECK(stats.unplaced_fixable == 0u);
     /* separated on at least one axis */
@@ -256,7 +272,9 @@ static void test_everything_stays_inside_the_board(void)
     CHECK(build_scene(&ctx, true));
 
     placement_entry_t out[COMP_COUNT];
-    CHECK(placer_solve(&ctx, nullptr, out, COMP_COUNT, nullptr));
+    solver_options_t light;
+    light_options(&light);
+    CHECK(placer_solve(&ctx, &light, out, COMP_COUNT, nullptr));
     for (uint32_t i = 0u; i < COMP_COUNT; ++i) {
         /* the extent that matters is the one after the chosen orientation */
         const bool odd = (out[i].orient & 1u) != 0u;
@@ -331,11 +349,13 @@ static void test_refuses_a_scene_that_is_not_finalised(void)
     CHECK(build_scene(&ctx, false));
     ctx.ingest.finalized = false;
     placement_entry_t out[COMP_COUNT];
-    CHECK(!placer_solve(&ctx, nullptr, out, COMP_COUNT, nullptr));
+    solver_options_t light;
+    light_options(&light);
+    CHECK(!placer_solve(&ctx, &light, out, COMP_COUNT, nullptr));
     ctx.ingest.finalized = true;
 
     /* too small a buffer must be refused, not overflowed */
-    CHECK(!placer_solve(&ctx, nullptr, out, COMP_COUNT - 1u, nullptr));
+    CHECK(!placer_solve(&ctx, &light, out, COMP_COUNT - 1u, nullptr));
     placer_context_destroy(&ctx);
 }
 
@@ -402,7 +422,9 @@ static void test_the_solver_leaves_no_trace_in_the_scratch(void)
     CHECK(build_scene(&ctx, true));
     const size_t before = ctx.scratch.used;
     placement_entry_t out[COMP_COUNT];
-    CHECK(placer_solve(&ctx, nullptr, out, COMP_COUNT, nullptr));
+    solver_options_t light;
+    light_options(&light);
+    CHECK(placer_solve(&ctx, &light, out, COMP_COUNT, nullptr));
     CHECK(ctx.scratch.used == before); /* it rewinds its own mark */
     placer_context_destroy(&ctx);
 }

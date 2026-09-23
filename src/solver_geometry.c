@@ -9,6 +9,59 @@
 
 #include <math.h>
 
+void solver_copper_box_at(const solver_t *s, uint32_t comp, coord_t px, coord_t py,
+                          coord_t *lo_x, coord_t *hi_x, coord_t *lo_y, coord_t *hi_y)
+{
+    /* A caller may hold a partial solver - the mask tests build one by hand -
+     * and a scene may carry no pad copper at all: the courtyard is then the
+     * only box there is. */
+    const bool have_copper = (s->copper_cx != nullptr && s->copper_cy != nullptr &&
+                              s->copper_hw != nullptr && s->copper_hh != nullptr);
+    coord_t cx = have_copper ? s->copper_cx[comp] : 0.0f;
+    coord_t cy = have_copper ? s->copper_cy[comp] : 0.0f;
+    coord_t hw = have_copper ? s->copper_hw[comp] : 0.0f;
+    coord_t hh = have_copper ? s->copper_hh[comp] : 0.0f;
+    if (hw <= 0.0f || hh <= 0.0f) {
+        cx = 0.0f;
+        cy = 0.0f;
+        hw = s->half_w[comp];
+        hh = s->half_h[comp];
+    }
+    /* A partial solver (the mask tests build one) has no orientation table: the
+     * part is then read at the angle the scene stored. */
+    const bool have_orient =
+        (s->orient != nullptr && s->ctx != nullptr && s->ctx->comps.flags != nullptr);
+    const uint8_t o = have_orient ? solver_pose_orient(s, comp) : 0u;
+    if (o == 1u) {
+        const coord_t t = cx;
+        cx = -cy;
+        cy = t;
+        const coord_t u = hw;
+        hw = hh;
+        hh = u;
+    } else if (o == 2u) {
+        cx = -cx;
+        cy = -cy;
+    } else if (o == 3u) {
+        const coord_t t = cx;
+        cx = cy;
+        cy = -t;
+        const coord_t u = hw;
+        hw = hh;
+        hh = u;
+    }
+    *lo_x = px + cx - hw;
+    *hi_x = px + cx + hw;
+    *lo_y = py + cy - hh;
+    *hi_y = py + cy + hh;
+}
+
+void solver_copper_box(const solver_t *s, uint32_t comp, coord_t *lo_x, coord_t *hi_x,
+                       coord_t *lo_y, coord_t *hi_y)
+{
+    solver_copper_box_at(s, comp, s->x[comp], s->y[comp], lo_x, hi_x, lo_y, hi_y);
+}
+
 void solver_rebuild_extents(solver_t *s)
 {
     const components_soa_t *c = &s->ctx->comps;
@@ -90,4 +143,3 @@ void solver_sync_cluster_members(solver_t *s)
 /* ========================================================================= */
 /* Wirelength                                                                */
 /* ========================================================================= */
-

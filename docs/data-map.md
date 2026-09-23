@@ -248,12 +248,44 @@ which the engine is not allowed to undo.
 
 | | |
 |---|---|
-| Configuration | the defaults: `--pad-clearance 0.50`, `--w-crossings 5.0`, `--polish-reach 0.20`, `--moves 4000` |
-| HPWL | **29 360.6 mm** (input 31 699.6) — 2 339 mm better than the input and 7 452 mm better than the certified 36 812.2 mm baseline |
+| Configuration | the defaults: `--pad-clearance 0.50`, `--w-crossings 5.0`, `--polish-reach 0.20`, `--moves 32000`, `--restarts 16` |
+| HPWL | **28 153.6 mm** (input 31 699.6) — 3 546 mm better than the input and 8 659 mm better than the certified 36 812.2 mm baseline |
 | Movable overlaps | **0** |
 | KiCad DRC | **0 courtyards_overlap · 0 shorting_items · 0 solder_mask_bridge**, and 0 clearance, 0 hole_clearance, 0 copper_edge_clearance |
-| Moves applied to the board | 194 of 707 footprints |
-| Time | 0.75 s (release), of which 0.06 s is the incumbent and 0.10 s is the relaxation that is thrown away |
+| Moves applied to the board | 208 of 707 footprints |
+| Time | 56 s (release) |
+
+### The execution budget is the machine's
+
+The one-second ceiling was a fixture of the early cycles and it was rationing
+the search for nothing. Sixteen independent walks of thirty-two thousand moves
+each - about a minute - beat the single walk of four thousand by **1 420 mm** on
+r10 (28 153.6 against 29 573.3 on the same corrected scene), and the spread
+between seeds is several hundred millimetres, so re-running is worth more than
+any amount of micro-tuning:
+
+| Setting | HPWL (seed 1) | wall clock |
+|---|---|---|
+| 1 walk × 4 000 moves | 29 573.3 mm | 0.8 s |
+| 8 walks × 16 000 | 28 655.3 mm | 14 s |
+| 16 walks × 32 000 (default) | **28 153.6 mm** | 56 s |
+| 16 walks × 32 000, seed 42 | 28 775.1 mm | 56 s |
+
+The walk that wins is chosen by the engine's own score - overlaps included, so
+the hard filter is paid for inside the selection - and only then does the
+combinatorial stage run. Deep runs also *found* the copper-model bugs below,
+which a four-thousand-move walk never reached.
+
+### Three copper-model corrections
+
+The deep search stopped producing legal boards until three modelling errors were
+fixed; each was measured against `kicad-cli` before and after.
+
+| Bug | Symptom | Fix |
+|---|---|---|
+| the extractor stored a pad's *absolute* rotation where the engine expected it relative to the footprint | a 90° footprint transposed the bounding box of every non-square pad: 0.581 mm of modelled gap where KiCad measured 0.009 | `pcbnew_extract.py` subtracts the footprint angle |
+| containment tested courtyards, but pads overhang them | 13 `copper_edge_clearance` at the board edge, one part (U1) with a pad 0.315 mm from Edge.Cuts | `solver_copper_box*` bounds the *copper*: in `global_confine`, `solver_clamp_to_board`, the slot search, the keepout mask and the polish |
+| a drilled pad was modelled by its pad, not its drill | an NPTH mounting hole obstructed 3.2 mm of its 4.0 mm hole, hiding 0.4 mm from the copper test | the ingest takes `max(size, drill)` |
 
 ### The detailed pass: permuting interchangeable parts
 

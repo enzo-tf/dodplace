@@ -114,7 +114,13 @@ def extract_footprint(fp, errors):
                 "y": ly,
                 "size_x": mm(size.x),
                 "size_y": mm(size.y),
-                "rot_deg": pad.GetOrientationDegrees(),
+                # Relative to the footprint, because that is the frame the
+                # offsets above and the engine's own rotation both live in.
+                # GetOrientationDegrees() is absolute: storing it made a 90-degree
+                # footprint transpose the bounding box of every non-square pad,
+                # and the copper model then measured 0.581 mm where the gap was
+                # 0.009 mm - which is how a deep anneal could produce a short.
+                "rot_deg": (pad.GetOrientationDegrees() - degrees) % 360.0,
                 "attrib": _ATTRIB_NAMES.get(pad.GetAttribute(), "other"),
                 "drill": mm(pad.GetDrillSize().x),
             }

@@ -110,8 +110,13 @@ def _pad_half_extents(pad: dict) -> tuple[float, float]:
     A pad carries its own rotation: a 0.54x0.64 pad turned 90 degrees is 0.32
     wide and 0.27 tall. Zero means the producer had nothing to say.
     """
-    sx = float(pad.get("size_x", 0.0)) * 0.5
-    sy = float(pad.get("size_y", 0.0)) * 0.5
+    # A drilled pad obstructs at least its drill: an NPTH mounting hole is
+    # 4.0 mm of hole in a 4.0x3.2 pad, and modelling the pad alone left 0.4 mm
+    # of the hole invisible to the copper test - which is a copper-to-edge
+    # violation in KiCad's report, against a neighbour on the far side.
+    drill = float(pad.get("drill", 0.0))
+    sx = max(float(pad.get("size_x", 0.0)), drill) * 0.5
+    sy = max(float(pad.get("size_y", 0.0)), drill) * 0.5
     if sx <= 0.0 and sy <= 0.0:
         return (0.0, 0.0)
     theta = math.radians(float(pad.get("rot_deg", 0.0)))

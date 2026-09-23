@@ -24,7 +24,13 @@ void solver_options_defaults(solver_options_t *opt)
     opt->w_density = 1.0f;
     opt->momentum = 0.9f;
     opt->density_bins = 64u;
-    opt->refine_moves = 4000u;
+    /* The execution budget is the machine's, not a tenth of a second: sixteen
+     * walks of thirty-two thousand moves each (about a minute on r10) beat a
+     * single walk of four thousand by 1 700 mm, and the wall clock is not a
+     * contract any more. `--moves` and `--restarts` dial it back for a
+     * developer loop or a plugin run. */
+    opt->refine_moves = 32000u;
+    opt->refine_restarts = 16u;
     /* Relative to the score, because the cost mixes millimetres and counts. */
     opt->anneal_t_start_ratio = 0.01f;
     opt->anneal_t_end_ratio = 1e-3f;
@@ -69,6 +75,12 @@ void solver_options_defaults(solver_options_t *opt)
      * solve costs n^3 and a two- or three-part bucket is what the windows are
      * best at anyway. */
     opt->swap_assign_min = 6u;
+    /* The star model prices a pin by its distance to the centroid of the rest
+     * of its net, which misreads the edges of a bounding box; the engine is
+     * judged on bounding boxes. The weighted average is the differentiable
+     * estimate the literature uses for exactly this reason. */
+    opt->assign_model = ASSIGN_MODEL_WA;
+    opt->wa_gamma = 1.0f;
     opt->pad_clearance = 0.5f;
     /* The mask rule sits a little outside the copper margin; 0.20 covers the
      * r10 pairs (0.646 and 0.650 mm) with margin to spare. */

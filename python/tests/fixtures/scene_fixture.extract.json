@@ -1,419 +1,420 @@
 {
-  "backend": "pcbnew",
-  "board": {
-    "copper_layers": 2,
-    "outline": [
-      [
-        [
-          50.0,
-          30.0
-        ],
-        [
-          0.0,
-          30.0
-        ],
-        [
-          0.0,
-          0.0
-        ],
-        [
-          50.0,
-          0.0
-        ]
-      ]
+ "backend": "pcbnew",
+ "backend_version": "10.0.5",
+ "board": {
+  "copper_layers": 2,
+  "outline": [
+   [
+    [
+     50.0,
+     30.0
     ],
-    "path": "/Users/enzogallet/CLionProjects/auto-placer/python/tests/fixtures/scene_fixture.kicad_pcb"
+    [
+     0.0,
+     30.0
+    ],
+    [
+     0.0,
+     0.0
+    ],
+    [
+     50.0,
+     0.0
+    ]
+   ]
+  ],
+  "path": "tests/fixtures/scene_fixture.kicad_pcb"
+ },
+ "components": [
+  {
+   "courtyard": [
+    [
+     [
+      -2.1950000000000007,
+      2.695
+     ],
+     [
+      -2.1950000000000007,
+      2.454999999999998
+     ],
+     [
+      -3.6950000000000007,
+      2.454999999999998
+     ],
+     [
+      -3.695,
+      -2.4549999999999987
+     ],
+     [
+      -2.195,
+      -2.4549999999999987
+     ],
+     [
+      -2.195,
+      -2.6950000000000007
+     ],
+     [
+      2.1950000000000007,
+      -2.695
+     ],
+     [
+      2.1950000000000007,
+      -2.454999999999998
+     ],
+     [
+      3.6950000000000007,
+      -2.454999999999998
+     ],
+     [
+      3.695,
+      2.4549999999999987
+     ],
+     [
+      2.195,
+      2.4549999999999987
+     ],
+     [
+      2.195,
+      2.6950000000000007
+     ]
+    ]
+   ],
+   "fields": {
+    "KiLib_Generator": "package/gullwing",
+    "LCSC": "C7955",
+    "MPN": "STM32F103C8T6"
+   },
+   "fpid": "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm",
+   "locked": false,
+   "models": [
+    "${KICAD10_3DMODEL_DIR}/Package_SO.3dshapes/SOIC-8_3.9x4.9mm_P1.27mm.step"
+   ],
+   "pads": [
+    {
+     "attrib": "smd",
+     "drill": 0.0,
+     "net": "USB1_P",
+     "number": "1",
+     "rot_deg": 0.0,
+     "size_x": 1.95,
+     "size_y": 0.6,
+     "x": -2.475000000000001,
+     "y": -1.9050000000000014
+    },
+    {
+     "attrib": "smd",
+     "drill": 0.0,
+     "net": "USB1_N",
+     "number": "2",
+     "rot_deg": 0.0,
+     "size_x": 1.95,
+     "size_y": 0.6,
+     "x": -2.4750000000000014,
+     "y": -0.6350000000000019
+    },
+    {
+     "attrib": "smd",
+     "drill": 0.0,
+     "net": "MOSI",
+     "number": "3",
+     "rot_deg": 0.0,
+     "size_x": 1.95,
+     "size_y": 0.6,
+     "x": -2.4750000000000014,
+     "y": 0.6350000000000012
+    },
+    {
+     "attrib": "smd",
+     "drill": 0.0,
+     "net": "GND",
+     "number": "4",
+     "rot_deg": 0.0,
+     "size_x": 1.95,
+     "size_y": 0.6,
+     "x": -2.475000000000002,
+     "y": 1.905000000000001
+    },
+    {
+     "attrib": "smd",
+     "drill": 0.0,
+     "net": "MISO",
+     "number": "5",
+     "rot_deg": 0.0,
+     "size_x": 1.95,
+     "size_y": 0.6,
+     "x": 2.475000000000001,
+     "y": 1.9050000000000014
+    },
+    {
+     "attrib": "smd",
+     "drill": 0.0,
+     "net": null,
+     "number": "6",
+     "rot_deg": 0.0,
+     "size_x": 1.95,
+     "size_y": 0.6,
+     "x": 2.4750000000000014,
+     "y": 0.6350000000000019
+    },
+    {
+     "attrib": "smd",
+     "drill": 0.0,
+     "net": null,
+     "number": "7",
+     "rot_deg": 0.0,
+     "size_x": 1.95,
+     "size_y": 0.6,
+     "x": 2.4750000000000014,
+     "y": -0.6350000000000012
+    },
+    {
+     "attrib": "smd",
+     "drill": 0.0,
+     "net": "VCC",
+     "number": "8",
+     "rot_deg": 0.0,
+     "size_x": 1.95,
+     "size_y": 0.6,
+     "x": 2.475000000000002,
+     "y": -1.905000000000001
+    }
+   ],
+   "ref": "U1",
+   "rot_deg": 180.0,
+   "side": "top",
+   "value": "SOIC-8_3.9x4.9mm_P1.27mm",
+   "x": 25.0,
+   "y": 21.0
   },
-  "components": [
+  {
+   "courtyard": [
+    [
+     [
+      -1.4749999999999996,
+      -0.7250000000000015
+     ],
+     [
+      1.4749999999999996,
+      -0.7250000000000013
+     ],
+     [
+      1.4749999999999996,
+      0.7250000000000015
+     ],
+     [
+      -1.4749999999999996,
+      0.7250000000000013
+     ]
+    ]
+   ],
+   "fields": {
+    "KiLib_Generator": "SMD_2terminal_chip_molded",
+    "LCSC": "C25804",
+    "MPN": "RC0603FR-0710KL",
+    "Manufacturer": "Yageo"
+   },
+   "fpid": "Resistor_SMD:R_0603_1608Metric",
+   "locked": true,
+   "models": [
+    "${KICAD10_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_0603_1608Metric.step"
+   ],
+   "pads": [
     {
-      "courtyard": [
-        [
-          [
-            -2.1950000000000007,
-            2.695
-          ],
-          [
-            -2.1950000000000007,
-            2.454999999999998
-          ],
-          [
-            -3.6950000000000007,
-            2.454999999999998
-          ],
-          [
-            -3.695,
-            -2.4549999999999987
-          ],
-          [
-            -2.195,
-            -2.4549999999999987
-          ],
-          [
-            -2.195,
-            -2.6950000000000007
-          ],
-          [
-            2.1950000000000007,
-            -2.695
-          ],
-          [
-            2.1950000000000007,
-            -2.454999999999998
-          ],
-          [
-            3.6950000000000007,
-            -2.454999999999998
-          ],
-          [
-            3.695,
-            2.4549999999999987
-          ],
-          [
-            2.195,
-            2.4549999999999987
-          ],
-          [
-            2.195,
-            2.6950000000000007
-          ]
-        ]
-      ],
-      "fields": {
-        "KiLib_Generator": "package/gullwing",
-        "LCSC": "C7955",
-        "MPN": "STM32F103C8T6"
-      },
-      "fpid": "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm",
-      "locked": false,
-      "models": [
-        "${KICAD10_3DMODEL_DIR}/Package_SO.3dshapes/SOIC-8_3.9x4.9mm_P1.27mm.step"
-      ],
-      "pads": [
-        {
-          "attrib": "smd",
-          "drill": 0.0,
-          "net": "USB1_P",
-          "number": "1",
-          "rot_deg": 180.0,
-          "size_x": 1.95,
-          "size_y": 0.6,
-          "x": -2.475000000000001,
-          "y": -1.9050000000000014
-        },
-        {
-          "attrib": "smd",
-          "drill": 0.0,
-          "net": "USB1_N",
-          "number": "2",
-          "rot_deg": 180.0,
-          "size_x": 1.95,
-          "size_y": 0.6,
-          "x": -2.4750000000000014,
-          "y": -0.6350000000000019
-        },
-        {
-          "attrib": "smd",
-          "drill": 0.0,
-          "net": "MOSI",
-          "number": "3",
-          "rot_deg": 180.0,
-          "size_x": 1.95,
-          "size_y": 0.6,
-          "x": -2.4750000000000014,
-          "y": 0.6350000000000012
-        },
-        {
-          "attrib": "smd",
-          "drill": 0.0,
-          "net": "GND",
-          "number": "4",
-          "rot_deg": 180.0,
-          "size_x": 1.95,
-          "size_y": 0.6,
-          "x": -2.475000000000002,
-          "y": 1.905000000000001
-        },
-        {
-          "attrib": "smd",
-          "drill": 0.0,
-          "net": "MISO",
-          "number": "5",
-          "rot_deg": 180.0,
-          "size_x": 1.95,
-          "size_y": 0.6,
-          "x": 2.475000000000001,
-          "y": 1.9050000000000014
-        },
-        {
-          "attrib": "smd",
-          "drill": 0.0,
-          "net": null,
-          "number": "6",
-          "rot_deg": 180.0,
-          "size_x": 1.95,
-          "size_y": 0.6,
-          "x": 2.4750000000000014,
-          "y": 0.6350000000000019
-        },
-        {
-          "attrib": "smd",
-          "drill": 0.0,
-          "net": null,
-          "number": "7",
-          "rot_deg": 180.0,
-          "size_x": 1.95,
-          "size_y": 0.6,
-          "x": 2.4750000000000014,
-          "y": -0.6350000000000012
-        },
-        {
-          "attrib": "smd",
-          "drill": 0.0,
-          "net": "VCC",
-          "number": "8",
-          "rot_deg": 180.0,
-          "size_x": 1.95,
-          "size_y": 0.6,
-          "x": 2.475000000000002,
-          "y": -1.905000000000001
-        }
-      ],
-      "ref": "U1",
-      "rot_deg": 180.0,
-      "side": "top",
-      "value": "SOIC-8_3.9x4.9mm_P1.27mm",
-      "x": 25.0,
-      "y": 21.0
+     "attrib": "smd",
+     "drill": 0.0,
+     "net": "USB1_P",
+     "number": "1",
+     "rot_deg": 0.0,
+     "size_x": 0.8,
+     "size_y": 0.95,
+     "x": 0.8249999999999993,
+     "y": 5.0516680464828276e-17
     },
     {
-      "courtyard": [
-        [
-          [
-            -1.4749999999999996,
-            -0.7250000000000015
-          ],
-          [
-            1.4749999999999996,
-            -0.7250000000000013
-          ],
-          [
-            1.4749999999999996,
-            0.7250000000000015
-          ],
-          [
-            -1.4749999999999996,
-            0.7250000000000013
-          ]
-        ]
-      ],
-      "fields": {
-        "KiLib_Generator": "SMD_2terminal_chip_molded",
-        "LCSC": "C25804",
-        "MPN": "RC0603FR-0710KL",
-        "Manufacturer": "Yageo"
-      },
-      "fpid": "Resistor_SMD:R_0603_1608Metric",
-      "locked": true,
-      "models": [
-        "${KICAD10_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_0603_1608Metric.step"
-      ],
-      "pads": [
-        {
-          "attrib": "smd",
-          "drill": 0.0,
-          "net": "USB1_P",
-          "number": "1",
-          "rot_deg": 90.0,
-          "size_x": 0.8,
-          "size_y": 0.95,
-          "x": 0.8249999999999993,
-          "y": 5.0516680464828276e-17
-        },
-        {
-          "attrib": "smd",
-          "drill": 0.0,
-          "net": "GND",
-          "number": "2",
-          "rot_deg": 90.0,
-          "size_x": 0.8,
-          "size_y": 0.95,
-          "x": -0.8249999999999993,
-          "y": -5.0516680464828276e-17
-        }
-      ],
-      "ref": "R2",
-      "rot_deg": 90.0,
-      "side": "top",
-      "value": "R_0603_1608Metric",
-      "x": 20.0,
-      "y": 10.0
-    },
-    {
-      "courtyard": [
-        [
-          [
-            1.4749999999999996,
-            -0.7249999999999996
-          ],
-          [
-            1.4749999999999996,
-            0.7249999999999996
-          ],
-          [
-            -1.4749999999999996,
-            0.7249999999999996
-          ],
-          [
-            -1.4749999999999996,
-            -0.7249999999999996
-          ]
-        ]
-      ],
-      "fields": {
-        "KiLib_Generator": "SMD_2terminal_chip_molded",
-        "LCSC": "C25804",
-        "MPN": "RC0603FR-0710KL",
-        "Manufacturer": "Yageo"
-      },
-      "fpid": "Resistor_SMD:R_0603_1608Metric",
-      "locked": false,
-      "models": [
-        "${KICAD10_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_0603_1608Metric.step"
-      ],
-      "pads": [
-        {
-          "attrib": "smd",
-          "drill": 0.0,
-          "net": "VCC",
-          "number": "1",
-          "rot_deg": 0.0,
-          "size_x": 0.8,
-          "size_y": 0.95,
-          "x": -0.8249999999999993,
-          "y": 0.0
-        },
-        {
-          "attrib": "smd",
-          "drill": 0.0,
-          "net": "GND",
-          "number": "2",
-          "rot_deg": 0.0,
-          "size_x": 0.8,
-          "size_y": 0.95,
-          "x": 0.8249999999999993,
-          "y": 0.0
-        }
-      ],
-      "ref": "R1",
-      "rot_deg": 0.0,
-      "side": "top",
-      "value": "R_0603_1608Metric",
-      "x": 10.0,
-      "y": 10.0
-    },
-    {
-      "courtyard": [],
-      "fields": {
-        "KiLib_Generator": "SMD_2terminal_chip_molded",
-        "LCSC": "C14663",
-        "MPN": "CL10B104KB8NNNC"
-      },
-      "fpid": "Capacitor_SMD:C_0603_1608Metric",
-      "locked": false,
-      "models": [
-        "${KICAD10_3DMODEL_DIR}/Capacitor_SMD.3dshapes/C_0603_1608Metric.step"
-      ],
-      "pads": [
-        {
-          "attrib": "smd",
-          "drill": 0.0,
-          "net": "VCC",
-          "number": "1",
-          "rot_deg": 180.0,
-          "size_x": 0.9,
-          "size_y": 0.95,
-          "x": -0.7749999999999986,
-          "y": -9.49101269339197e-17
-        },
-        {
-          "attrib": "smd",
-          "drill": 0.0,
-          "net": "GND",
-          "number": "2",
-          "rot_deg": 180.0,
-          "size_x": 0.9,
-          "size_y": 0.95,
-          "x": 0.7749999999999986,
-          "y": 9.49101269339197e-17
-        }
-      ],
-      "ref": "C1",
-      "rot_deg": 180.0,
-      "side": "bottom",
-      "value": "C_0603_1608Metric",
-      "x": 30.0,
-      "y": 10.0
+     "attrib": "smd",
+     "drill": 0.0,
+     "net": "GND",
+     "number": "2",
+     "rot_deg": 0.0,
+     "size_x": 0.8,
+     "size_y": 0.95,
+     "x": -0.8249999999999993,
+     "y": -5.0516680464828276e-17
     }
-  ],
-  "keepouts": [
+   ],
+   "ref": "R2",
+   "rot_deg": 90.0,
+   "side": "top",
+   "value": "R_0603_1608Metric",
+   "x": 20.0,
+   "y": 10.0
+  },
+  {
+   "courtyard": [
+    [
+     [
+      1.4749999999999996,
+      -0.7249999999999996
+     ],
+     [
+      1.4749999999999996,
+      0.7249999999999996
+     ],
+     [
+      -1.4749999999999996,
+      0.7249999999999996
+     ],
+     [
+      -1.4749999999999996,
+      -0.7249999999999996
+     ]
+    ]
+   ],
+   "fields": {
+    "KiLib_Generator": "SMD_2terminal_chip_molded",
+    "LCSC": "C25804",
+    "MPN": "RC0603FR-0710KL",
+    "Manufacturer": "Yageo"
+   },
+   "fpid": "Resistor_SMD:R_0603_1608Metric",
+   "locked": false,
+   "models": [
+    "${KICAD10_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_0603_1608Metric.step"
+   ],
+   "pads": [
     {
-      "layer_mask": 5,
-      "name": "antenna-keepout",
-      "xy": [
-        [
-          [
-            35.0,
-            2.0
-          ],
-          [
-            48.0,
-            2.0
-          ],
-          [
-            48.0,
-            12.0
-          ],
-          [
-            35.0,
-            12.0
-          ]
-        ]
-      ]
+     "attrib": "smd",
+     "drill": 0.0,
+     "net": "VCC",
+     "number": "1",
+     "rot_deg": 0.0,
+     "size_x": 0.8,
+     "size_y": 0.95,
+     "x": -0.8249999999999993,
+     "y": 0.0
+    },
+    {
+     "attrib": "smd",
+     "drill": 0.0,
+     "net": "GND",
+     "number": "2",
+     "rot_deg": 0.0,
+     "size_x": 0.8,
+     "size_y": 0.95,
+     "x": 0.8249999999999993,
+     "y": 0.0
     }
-  ],
-  "netclasses": [
+   ],
+   "ref": "R1",
+   "rot_deg": 0.0,
+   "side": "top",
+   "value": "R_0603_1608Metric",
+   "x": 10.0,
+   "y": 10.0
+  },
+  {
+   "courtyard": [],
+   "fields": {
+    "KiLib_Generator": "SMD_2terminal_chip_molded",
+    "LCSC": "C14663",
+    "MPN": "CL10B104KB8NNNC"
+   },
+   "fpid": "Capacitor_SMD:C_0603_1608Metric",
+   "locked": false,
+   "models": [
+    "${KICAD10_3DMODEL_DIR}/Capacitor_SMD.3dshapes/C_0603_1608Metric.step"
+   ],
+   "pads": [
     {
-      "clearance_mm": 0.2,
-      "name": "Default",
-      "track_width_mm": 0.2
+     "attrib": "smd",
+     "drill": 0.0,
+     "net": "VCC",
+     "number": "1",
+     "rot_deg": 0.0,
+     "size_x": 0.9,
+     "size_y": 0.95,
+     "x": -0.7749999999999986,
+     "y": -9.49101269339197e-17
+    },
+    {
+     "attrib": "smd",
+     "drill": 0.0,
+     "net": "GND",
+     "number": "2",
+     "rot_deg": 0.0,
+     "size_x": 0.9,
+     "size_y": 0.95,
+     "x": 0.7749999999999986,
+     "y": 9.49101269339197e-17
     }
-  ],
-  "nets": [
-    {
-      "name": "GND",
-      "netclass": "Default"
-    },
-    {
-      "name": "MISO",
-      "netclass": "Default"
-    },
-    {
-      "name": "MOSI",
-      "netclass": "Default"
-    },
-    {
-      "name": "USB1_N",
-      "netclass": "Default"
-    },
-    {
-      "name": "USB1_P",
-      "netclass": "Default"
-    },
-    {
-      "name": "VCC",
-      "netclass": "Default"
-    }
-  ],
-  "schema": "dodplace.extract/1",
-  "warnings": []
+   ],
+   "ref": "C1",
+   "rot_deg": 180.0,
+   "side": "bottom",
+   "value": "C_0603_1608Metric",
+   "x": 30.0,
+   "y": 10.0
+  }
+ ],
+ "keepouts": [
+  {
+   "layer_mask": 5,
+   "name": "antenna-keepout",
+   "xy": [
+    [
+     [
+      35.0,
+      2.0
+     ],
+     [
+      48.0,
+      2.0
+     ],
+     [
+      48.0,
+      12.0
+     ],
+     [
+      35.0,
+      12.0
+     ]
+    ]
+   ]
+  }
+ ],
+ "netclasses": [
+  {
+   "clearance_mm": 0.2,
+   "name": "Default",
+   "track_width_mm": 0.2
+  }
+ ],
+ "nets": [
+  {
+   "name": "GND",
+   "netclass": "Default"
+  },
+  {
+   "name": "MISO",
+   "netclass": "Default"
+  },
+  {
+   "name": "MOSI",
+   "netclass": "Default"
+  },
+  {
+   "name": "USB1_N",
+   "netclass": "Default"
+  },
+  {
+   "name": "USB1_P",
+   "netclass": "Default"
+  },
+  {
+   "name": "VCC",
+   "netclass": "Default"
+  }
+ ],
+ "schema": "dodplace.extract/1",
+ "warnings": []
 }

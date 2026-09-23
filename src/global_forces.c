@@ -98,16 +98,23 @@ void global_confine(solver_t *s)
         }
         const uint32_t cl = s->cluster_of[i];
         const uint32_t target = (cl == SOLVER_NO_INDEX) ? i : s->cluster_master[cl];
+        coord_t lo_x = 0.0f;
+        coord_t hi_x = 0.0f;
+        coord_t lo_y = 0.0f;
+        coord_t hi_y = 0.0f;
+        solver_copper_box(s, target, &lo_x, &hi_x, &lo_y, &hi_y);
         coord_t px = s->x[target];
         coord_t py = s->y[target];
-        const coord_t lo_x = s->board_min_x + s->half_w[target];
-        const coord_t hi_x = s->board_max_x - s->half_w[target];
-        const coord_t lo_y = s->board_min_y + s->half_h[target];
-        const coord_t hi_y = s->board_max_y - s->half_h[target];
-        px = (px < lo_x) ? lo_x : px;
-        px = (px > hi_x) ? hi_x : px;
-        py = (py < lo_y) ? lo_y : py;
-        py = (py > hi_y) ? hi_y : py;
+        /* The box the part may not leave is its copper, measured from the
+         * centre: shifting it so the box lands inside the board. */
+        const coord_t low_x = s->board_min_x - (lo_x - s->x[target]);
+        const coord_t high_x = s->board_max_x - (hi_x - s->x[target]);
+        const coord_t low_y = s->board_min_y - (lo_y - s->y[target]);
+        const coord_t high_y = s->board_max_y - (hi_y - s->y[target]);
+        px = (px < low_x) ? low_x : px;
+        px = (px > high_x) ? high_x : px;
+        py = (py < low_y) ? low_y : py;
+        py = (py > high_y) ? high_y : py;
         if (cl != SOLVER_NO_INDEX) {
             solver_apply_cluster(s, cl, px, py);
         } else {

@@ -60,13 +60,14 @@ static void print_usage(FILE *out, const char *argv0)
                   "      --momentum F       Nesterov look-ahead for the analytic model (0.9)\n"
                   "      --density-bins N   bins per axis of the density grid (64)\n"
                   "      --iterations N     force-directed steps, default 400\n"
-                  "      --moves N          annealing moves, default 4000\n"
+                  "      --moves N          annealing moves per walk, default 32000\n"
                   "      --no-cluster       skip semantic clustering\n"
                   "      --no-matching      skip the discrete decoupling assignment\n"
                   "      --swap-prob F      share of moves that exchange identical parts (0.15)\n"
                   "      --swap-max-pins N  only parts with at most this many pins (6)\n"
                   "      --swap-window N    parts per exact permutation window (5, 0 = off)\n"
                   "      --swap-assign N    smallest bucket solved by assignment (6, 0 = off)\n"
+                  "      --restarts N       independent annealing walks, best kept (1)\n"
                   "      --pad-clearance MM copper-to-copper margin (default 0.5)\n"
                   "      --polish-reach MM  mask polish band above that margin (default 0.2)\n"
                   "      --w-crossings F    weight of the ratsnest crossing term (default 5.0)\n"
@@ -374,6 +375,38 @@ int main(int argc, char **argv)
                 return 2;
             }
             options.swap_assign_min = (uint32_t)strtoul(argv[++i], nullptr, 10);
+            continue;
+        }
+        if (strcmp(arg, "--restarts") == 0) {
+            if (i + 1 >= argc) {
+                (void)fprintf(stderr, "error: --restarts needs a number\n");
+                return 2;
+            }
+            options.refine_restarts = (uint32_t)strtoul(argv[++i], nullptr, 10);
+            continue;
+        }
+        if (strcmp(arg, "--assign-model") == 0) {
+            if (i + 1 >= argc) {
+                (void)fprintf(stderr, "error: --assign-model needs a name\n");
+                return 2;
+            }
+            const char *name = argv[++i];
+            if (strcmp(name, "star") == 0) {
+                options.assign_model = ASSIGN_MODEL_STAR;
+            } else if (strcmp(name, "wa") == 0) {
+                options.assign_model = ASSIGN_MODEL_WA;
+            } else {
+                (void)fprintf(stderr, "error: --assign-model takes star or wa\n");
+                return 2;
+            }
+            continue;
+        }
+        if (strcmp(arg, "--wa-gamma") == 0) {
+            if (i + 1 >= argc) {
+                (void)fprintf(stderr, "error: --wa-gamma needs a number\n");
+                return 2;
+            }
+            options.wa_gamma = (coord_t)atof(argv[++i]);
             continue;
         }
         if (strcmp(arg, "--pad-clearance") == 0 || strcmp(arg, "--w-crossings") == 0 ||
