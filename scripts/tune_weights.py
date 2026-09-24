@@ -161,6 +161,9 @@ def main() -> int:
     parser.add_argument("--solver", default=str(ROOT / "build/gcc-release/dodplace-solve"))
     parser.add_argument("--pass", dest="pass_number", type=int, default=1)
     parser.add_argument("--jobs", type=int, default=4)
+    parser.add_argument("--check-only", action="store_true",
+                        help="verify the harness can certify this board, then stop: "
+                             "the reference run must not be started by accident")
     args = parser.parse_args()
 
     cfg = {"scene": args.scene, "board": Path(args.board), "extract": args.extract,
@@ -171,6 +174,8 @@ def main() -> int:
         return 2
     print(f"harness: {cfg['board'].name} is enriched (rules, catalogue, no degraded "
           f"mass/ceiling/thermal)")
+    if args.check_only:
+        return 0
     points = points_for(args.pass_number)
     stamp = time.strftime("%Y%m%d-%H%M%S")
     out = ROOT / "scripts" / f"tune_{stamp}.csv"
