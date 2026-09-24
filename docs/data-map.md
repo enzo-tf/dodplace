@@ -2,14 +2,50 @@
 
 ## 0. Certification v0.2.0
 
-| | certified baseline (v0.1.0-gold) | **v0.2.0** |
+The reference is the board **as it is built from**, enrichment included: the
+board file, `extra.toml` beside it and the parts catalogue. A scene without them
+still loads, and quietly means something else - no masses, no ceiling, none of
+the thermal rules, a third of the decoupling pairs - so the numbers below are
+the enriched scene's, and the harness refuses to run on anything else.
+
+| | certified baseline (v0.1.0-gold) | **v0.2.0, enriched scene** |
 |---|---|---|
-| HPWL on r10, 707 components | 36 812.2 mm | **26 766.1 mm** (−27.3 %) |
+| HPWL on r10, 707 components | 36 812.2 mm | **26 890.5 mm** (−26.9 %) |
+| Crossings | 691 (input) | 548 |
 | KiCad DRC, the six gate rules | 0 each | **0 courtyards_overlap · 0 shorting_items · 0 solder_mask_bridge · 0 clearance · 0 hole_clearance · 0 copper_edge_clearance** |
-| KiCad silkscreen warnings | 7 | **5** (0 `silk_over_copper`) |
+| KiCad silkscreen warnings | 7 | **0** (`silk_overlap`, `silk_over_copper`, `silk_edge_clearance`) |
+| Total DRC violations | 200 (the board's own) | **200 — the board's own, none introduced** |
 | Determinism | byte-identical | **byte-identical across runs and across worker counts** |
-| Wall clock | 0.88 s | 7 min 26 s (16 walks × 1 M moves, `--jobs 4`; 5 min 35 s with `--jobs 8`) |
+| Wall clock | 0.88 s | 7 min 40 s solve (16 walks × 1 M moves, `--jobs 4`) + 15 s apply |
 | Test suite | 4 C tests | **7 C tests + the python suite** |
+
+What the enriched scene makes the engine honour, and the degraded copy did not:
+
+| | board alone (`/tmp` copy) | **enriched (the standard)** |
+|---|---|---|
+| parts matched | 0 | **697** |
+| heights / masses | 696/707 / 0 | **707/707 / 697** |
+| decoupling constraints | 40 (netlist heuristic) | **96** |
+| thermal constraints | 0 | **697** |
+| mechanical ceiling | unknown | **7.7 mm** |
+| vias under a body | allowed | **forbidden** |
+| HPWL | 26 766.1 mm | **26 890.5 mm** |
+
+The 124 mm between the two rows is the price of the real problem: a placement
+that respects 697 thermal exclusions, 96 decoupling rules, a 7.7 mm ceiling and
+the via restriction is a different placement from one that never knew about
+them, and it is the only one worth certifying. It also comes with the silkscreen
+silent - five footprints nudged by the polish, all three silk rules at zero.
+
+The artifacts:
+
+    /tmp/r10real/placed.bin        sha256 2c0b5a4d34800074eab87c96c1f80d34e6732572777c762b123b144fa1f4b076
+    /tmp/r10real/placed.kicad_pcb  sha256 149e9ccc8c0cb5f6d2ba1ee6f76f0240e50827ce9c2142645bbdcd1f7e769b03
+
+`scripts/tune_weights.py` now refuses a reference run whose board has no
+`extra.toml` or parts catalogue beside it, or whose scene reports a degraded
+mass, ceiling or thermal model: it prints which of the two is missing and stops,
+because a number measured in silent degraded mode is not the board's number.
 
 `dodplace apply` runs the silkscreen nudge by default; `--no-silk-polish` turns
 it off and costs nothing (the apply step then takes 0.43 s instead of 15.88 s,

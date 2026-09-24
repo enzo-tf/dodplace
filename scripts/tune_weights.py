@@ -14,9 +14,11 @@ from __future__ import annotations
 import argparse
 import concurrent.futures
 import csv
+import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 from pathlib import Path
@@ -120,6 +122,37 @@ def points_for(pass_number: int) -> list[dict]:
     return points
 
 
+REQUIRED_SIDECARS = ("extra.toml", "dodplace-parts.csv")
+"""The reference board's enrichment: the physical rules and the part catalogue.
+
+Without them a scene still loads - and quietly means something else: no masses,
+no ceiling, none of the thermal rules, and a third of the decoupling pairs. A
+number measured on that scene is not the board's number, so the harness refuses
+to run rather than report one.
+"""
+
+FORBIDDEN_DEGRADED = ("mass-unknown", "ceiling-unknown", "no-thermal-data")
+
+
+def require_enriched(cfg: dict) -> str | None:
+    """None when the harness can certify, else why it cannot."""
+    board = Path(cfg["board"])
+    missing = [name for name in REQUIRED_SIDECARS if not (board.parent / name).is_file()]
+    if missing:
+        return (f"the reference harness needs the board's enrichment beside it: "
+                f"{', '.join(missing)} missing in {board.parent}")
+    probe = subprocess.run([cfg["solver"], cfg["scene"], "--identity", "--quiet",
+                            "-o", os.devnull], capture_output=True, text=True)
+    text = probe.stdout + probe.stderr
+    if probe.returncode != 0:
+        return f"the scene did not load: {text.strip().splitlines()[-1] if text else 'no output'}"
+    bad = [name for name in FORBIDDEN_DEGRADED if name in text]
+    if bad:
+        return (f"the scene was built without that enrichment ({', '.join(bad)} in its "
+                f"report): re-run `dodplace ingest` with the files beside the board")
+    return None
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--scene", required=True)
@@ -132,6 +165,12 @@ def main() -> int:
 
     cfg = {"scene": args.scene, "board": Path(args.board), "extract": args.extract,
            "solver": args.solver}
+    refused = require_enriched(cfg)
+    if refused is not None:
+        print(f"error: {refused}", file=sys.stderr)
+        return 2
+    print(f"harness: {cfg['board'].name} is enriched (rules, catalogue, no degraded "
+          f"mass/ceiling/thermal)")
     points = points_for(args.pass_number)
     stamp = time.strftime("%Y%m%d-%H%M%S")
     out = ROOT / "scripts" / f"tune_{stamp}.csv"
